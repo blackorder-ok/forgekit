@@ -1,0 +1,9 @@
+# gitleaks config for the generated project. Extends the default ruleset.
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Committed secrets templates hold key names with empty values, not secrets. Real secrets files are git-ignored."
+paths = ['''secrets/.*\.example$''']

@@ -1,291 +1,420 @@
 # forgekit
 
-A Claude Code kit that plans, scaffolds, builds, reviews and ships production-grade Python/FastAPI apps in your coding style, on your own machine, with the fewest tokens it can manage.
+[![kit-ci](https://github.com/blackorder-ok/forgekit/actions/workflows/kit-ci.yml/badge.svg)](https://github.com/blackorder-ok/forgekit/actions/workflows/kit-ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB.svg)
+![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-6B4FBB.svg)
 
-It ships as one plugin, **`forge`**, from a local git marketplace, **`forgekit`**. Everything is namespaced `/forge:<name>`.
+**forgekit** is a Claude Code plugin that plans, scaffolds, builds, reviews and ships production-grade Python/FastAPI applications. It enforces one delivery path, from idea to tagged release, with explicit approval gates, and keeps the token cost of each step low.
 
-- Version: 0.2.0 · Replaces: `setting-up-claude` v0.1.0 (left untouched) · Build story: [BUILD-LOG.md](BUILD-LOG.md)
+The plugin is named **`forge`**. It is distributed through a marketplace named **`forgekit`**. Every command is namespaced: `/forge:<name>`.
 
-## Contents
-1. [What you get](#1-what-you-get)
-2. [Install and first run](#2-install-and-first-run)
-3. [Which command, when](#3-which-command-when)
-4. [Typical flows](#4-typical-flows)
-5. [Agents](#5-agents)
-6. [Skills](#6-skills)
-7. [Memory and tokens](#7-memory-and-tokens)
-8. [Learning loop: global vs project](#8-learning-loop-global-vs-project)
-9. [Adding your own units](#9-adding-your-own-units)
-10. [Updating the kit](#10-updating-the-kit)
-11. [Guardrails (hooks)](#11-guardrails-hooks)
-12. [Repo layout](#12-repo-layout)
-13. [Checks and tests](#13-checks-and-tests)
-14. [Known limits](#14-known-limits)
+| | |
+|---|---|
+| **Current version** | 0.4.0 (tag `v0.4.0`) |
+| **Plugin** | `plugins/forge` |
+| **Requires** | Claude Code, Git, Python 3.11, Docker (for generated projects) |
+| **Licence** | MIT |
+| **Proof record** | [docs/PROOF_LOG.md](docs/PROOF_LOG.md) |
 
 ---
 
-## 1. What you get
+## Contents
 
-| Thing | Count | Where |
-|---|---|---|
-| Commands | 26 | `plugins/forge/commands/` |
-| Agents | 9 | `plugins/forge/agents/` |
-| Skill digests | 14 (each with `references/` for detail) | `plugins/forge/skills/` |
-| Project templates (Docker, CI, hooks, CLAUDE.md, constitution) | 17 files | `plugins/forge/templates/` |
-| Scripts (memory, kit management, style) | 7 | `plugins/forge/scripts/` |
-| Kit self-check and tests | 1 + 15 tests | `tools/`, `tests/` |
+- [Why forgekit](#why-forgekit)
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Workflows](#workflows)
+- [Architecture](#architecture)
+- [Configuration](#configuration)
+- [Guardrails](#guardrails)
+- [Memory and token budget](#memory-and-token-budget)
+- [Development](#development)
+- [Updating and versioning](#updating-and-versioning)
+- [Status and known limits](#status-and-known-limits)
+- [Contributing](#contributing)
+- [Licence](#licence)
 
-Design rules the kit follows itself: Karpathy's four rules (think first, simplest thing, surgical changes, goal-driven) and token budgets enforced by `tools/check_kit.py --tokens` (skill digest ≤ 2.5 KB, agent ≤ 3 KB, command ≤ 3.5 KB; one documented exception).
+---
 
-Every agent, skill and command works on its own: nothing requires `/forge:ship`.
+## Why forgekit
 
-## 2. Install and first run
+Most AI coding setups fail in one of three ways: they skip planning, they let the model edit production branches, or they load so much context that every step is slow and expensive. forgekit addresses each one directly.
 
-You need Claude Code, git, Python 3.11, and (for generated projects) Docker.
+- **A defined path.** Work moves through plan → design → failing tests → implementation → review → gate → release. Each stage has a command, a stop rule and a "done when" test.
+- **Guardrails that bite.** Hooks block edits on protected branches, block test edits that remove assertions, and stop oversized fixes. Production branches are changed only through pull requests.
+- **Low token cost.** Agents preload short rule digests; long detail is read only when needed. A CI check fails the build if any file grows past its budget.
+- **Your style, not a generic one.** A `learn-style` command samples your own code (counts only) and saves a personal style profile outside the repository.
 
-```bash
-cd <path-to>\forgekit
-git init -b main
-git add .
-git commit -m "forgekit 0.2.0"
-git tag v0.2.0
+## Features
+
+| Area | What you get |
+|---|---|
+| Planning | `plan-project` turns an idea into a validated plan file with at most four open questions. |
+| Scaffolding | `scaffold-project` generates a complete project: Docker, CI, four environment branches, config, docs, hooks, and Claude instructions. |
+| Existing code | `adopt-project` surveys a repository read-only, writes a plan from what it really uses, and closes gaps one small branch at a time. |
+| Building | `design`, `feature`, `converge`, `fix` and `hotfix` implement changes test-first, within a diff budget. |
+| Quality | `review`, `security-review`, `eval` and `check` return explicit verdicts (`APPROVE`, `PASS`, `GREEN`, `RED`). |
+| Release | `promote` and `release` open pull requests between environments; tags are created only after a merge. |
+| Memory | Layered, searchable project memory with a session-start index. |
+| Kit maintenance | `kit-new`, `kit-claim`, `kit-status`, `kit-review` and `kit-pull` manage the kit itself, with approval before any write. |
+
+## Quick start
+
+```text
+/plugin marketplace add blackorder-ok/forgekit
+/plugin install forge@forgekit
+
+/forge:route "describe what you want to do"    # pick the smallest track
+/forge:doctor                                   # check tools and services
 ```
 
-Check the plugin files with Claude Code's own validator:
+For a new project, continue with [Workflows](#workflows).
 
-```bash
-claude plugin validate ./plugins/forge
-```
+## Installation
 
-Install from the local marketplace, inside Claude Code:
+### Requirements
 
-```
-/plugin marketplace add <path-to>\forgekit
+| Requirement | Notes |
+|---|---|
+| Claude Code | Current version with plugin support. |
+| Git | Required for branches, the kit registry and the update check. |
+| Python 3.11 | On `PATH` as `python`. The kit's own scripts use only the standard library. |
+| Docker | Required for generated projects. Not needed to install or use the kit's planning commands. |
+| GitHub CLI (`gh`) | Required for pull requests and the GitHub steps of scaffold, promote and release. |
+| Git Bash (Windows) | Required so the project hooks can run `bash`. |
+
+### From GitHub
+
+```text
+/plugin marketplace add blackorder-ok/forgekit
 /plugin install forge@forgekit
 ```
 
-Tell the scripts where your kit clone is (used by `kit-new`, `kit-claim`, `kit-status`, `kit-pull`):
+### From a local clone
 
-```bash
-mkdir %USERPROFILE%\.kit
-echo <path-to>\forgekit > %USERPROFILE%\.kit\repo
+Clone the repository, then point Claude Code at the path:
+
+```text
+/plugin marketplace add <path-to-clone>
+/plugin install forge@forgekit
 ```
 
-Developing the kit itself: run `claude --plugin-dir <path-to>\forgekit\plugins\forge` so edits show up after `/reload-plugins` with no reinstall.
+To develop the kit itself without reinstalling after each edit:
 
-Auto-update is off for this marketplace. Updates are manual: see [section 10](#10-updating-the-kit).
+```bash
+claude --plugin-dir <path-to-clone>/plugins/forge
+```
 
-First run in any folder: `/forge:doctor` (checks Docker, git, gh, Python, emulator).
+Run `/reload-plugins` inside the session to pick up changes.
 
-## 3. Which command, when
+### Kit location for maintenance commands
 
-### Start here
-| Command | Use it when | What it does |
+Commands that manage the kit (`kit-new`, `kit-claim`, `kit-status`, `kit-pull`) need the location of your clone. Either set the environment variable `FORGE_REPO`, or write the path into `~/.kit/repo`:
+
+```bash
+mkdir -p ~/.kit
+echo "<path-to-clone>" > ~/.kit/repo
+```
+
+### Validate the installation
+
+```bash
+claude plugin validate ./plugins/forge
+python tools/check_kit.py
+```
+
+## Usage
+
+### Commands
+
+Commands are grouped by purpose. Each one states its preconditions and stops before any change if they fail.
+
+**Start here**
+
+| Command | Purpose |
+|---|---|
+| `/forge:route <task>` | Chooses the track (quick, standard or full) and names the first command. Writes nothing. |
+| `/forge:doctor [stack]` | Preflight check of tools; with `stack`, also the running services. Returns `READY` or `NOT READY`. |
+| `/forge:ship <idea>` | Runs the full path for a new project, stopping at each decision. |
+
+**Plan and scaffold**
+
+| Command | Purpose |
+|---|---|
+| `/forge:plan-project <idea>` | Writes `<project>.plan.md`. Creates no folder, repository or branch. |
+| `/forge:scaffold-project <plan>` | Generates the project skeleton from a validated plan. Each GitHub step needs your approval. |
+| `/forge:adopt-project <path>` | Brings an existing repository under the kit without rewriting working code. |
+
+**Build**
+
+| Command | Purpose |
+|---|---|
+| `/forge:design <feature>` | Writes the feature's design document and stops until it is approved. |
+| `/forge:feature <feature>` | Builds an approved feature: gate, failing tests, implementation, review, security, evals where relevant, final gate, docs. Never merges. |
+| `/forge:converge <feature>` | Checks that design, tests and code agree; fixes the smallest mismatch; at most two rounds. |
+| `/forge:fix <bug>` | One bug on `develop` or `feature/*`: failing regression test first, one root-cause change, diff budget of 3 files and 20 lines. |
+| `/forge:hotfix <bug>` | A production bug, from `master`. Prepares pull requests into `master` and `develop`. |
+
+**Check, review and release**
+
+| Command | Purpose |
+|---|---|
+| `/forge:check <env>` | Runs the devops check sequence for one environment. Returns `GREEN` or `RED`. |
+| `/forge:review [feature]` | Read-only review of the current diff. Returns `APPROVE` or `CHANGES REQUIRED`. |
+| `/forge:security-review [all]` | Read-only security review. Returns `PASS`, `PASS WITH FINDINGS` or `FAIL`. |
+| `/forge:eval <env>` | Runs the AI eval set against thresholds and baseline. Never updates the baseline. |
+| `/forge:qa <env>` | Runs end-to-end, smoke and UAT checks and writes a QA report. |
+| `/forge:docs-sync` | Aligns documentation and the changelog with the branch. |
+| `/forge:promote <from> <to>` | Opens a pull request between environment branches after a green check. |
+| `/forge:release X.Y.Z` | Prepares a version branch and pull request from `master`. |
+| `/forge:release tag X.Y.Z` | Tags the merge commit, after the release pull request is merged. |
+
+**Memory, style and kit maintenance**
+
+| Command | Purpose |
+|---|---|
+| `/forge:mem search\|show\|timeline\|add` | Searches and records project and kit memory. |
+| `/forge:learn-style <folders>` | Learns your Python style from sample files and saves it to `~/.kit/style.md` after you approve. |
+| `/forge:kit-status` | Read-only report of local units the kit does not know. |
+| `/forge:kit-claim <kind> <name>` | Moves a local unit into the kit after a secrets scan and your approval. |
+| `/forge:kit-new <kind> <name>` | Creates a new skill, agent or command in the kit repository. |
+| `/forge:kit-review` | Groups lessons from the inbox and proposes global ones on a branch for approval. |
+| `/forge:kit-pull` | Shows what a newer kit tag would change. Changes nothing. |
+
+### Agents
+
+Nine specialised agents do the focused work. Each can also be invoked on its own.
+
+| Agent | Model | Responsibility |
 |---|---|---|
-| `/forge:route <task>` | You are unsure how much process the task needs | Picks the track (quick / standard / full) and names the first command. Writes nothing. |
-| `/forge:doctor` | Before any feature, release or stack run | Read-only preflight of Docker, compose, emulator, Ollama, git, gh, secrets file, Python. `READY` or `NOT READY`. |
-| `/forge:ship <idea>` | New project, hands-off | Orchestrates product → plan → scaffold → F01 → features → promote, one stage at a time, stops at every decision. |
+| `product-owner` | sonnet | Users, acceptance criteria, up to four open questions. |
+| `architect` | opus | Project plan and feature design documents. |
+| `developer` | sonnet | Implementation for the backend and frontend; one-bug fixes. |
+| `tester` | sonnet | Failing tests before code; regression tests; e2e, smoke and UAT runs. |
+| `ops` | sonnet | Docker, CI, environment health, rollback and backup. |
+| `reviewer` | sonnet | Read-only code review. |
+| `security-reviewer` | sonnet | Read-only security review; waiver handling. |
+| `ai-evaluator` | sonnet | Eval cases and explanations of failing runs. |
+| `doc-updater` | haiku | Documentation and changelog. Never changes code. |
 
-### Plan and scaffold
-| Command | Use it when | What it does |
-|---|---|---|
-| `/forge:plan-project <idea>` | New project | `product-owner` asks up to 4 questions; `architect` writes `<project>.plan.md`; validated. Creates nothing else. |
-| `/forge:scaffold-project <plan>` | A validated `mode: new` plan exists | Creates the repo skeleton: Docker, CI, config, docs, hooks, `CLAUDE.md`, constitution, four branches. GitHub steps each need your yes. |
-| `/forge:adopt-project <path>` | You have an existing repo | Surveys read-only, writes `docs/plan.md` from reality, lists gaps, closes them one small branch each. Never rewrites working code. |
+## Workflows
 
-### Build
-| Command | Use it when | What it does |
-|---|---|---|
-| `/forge:design <feature>` | Adding a feature | Adds it to the plan, `architect` writes `docs/design/<feature>.md`, stops for your approval (`status: approved`). |
-| `/forge:feature <feature>` | Design approved | Gate → red tests → green code → review → security → evals (if LLM) → final gate → docs. Never merges. |
-| `/forge:converge <feature>` | After a build, or drift suspected | Checks design ↔ tests ↔ code, fixes the smallest mismatch, max 2 rounds. |
-| `/forge:fix <bug>` | One bug on develop/feature | Failing regression test first, one root-cause change, diff budget 3 files / 20 lines, review, gate. Explicit verdicts. |
-| `/forge:hotfix <bug>` | Production bug | Same as fix, cut from `master`, prepares two PRs (master and develop). |
-
-### Check and ship
-| Command | Use it when | What it does |
-|---|---|---|
-| `/forge:check <env>` | Any time | `ops` runs build, health, tests, logs and scans for one env → `GREEN` / `RED`. |
-| `/forge:review [feature]` | Before merging | Read-only code review of the diff → `APPROVE` / `CHANGES REQUIRED`. |
-| `/forge:security-review [all]` | Before merging | Read-only security review → `PASS` / `PASS WITH FINDINGS` / `FAIL`. |
-| `/forge:eval <env>` | LLM feature changed | Runs eval set vs thresholds and baseline; never updates the baseline. |
-| `/forge:qa <env>` | After deploy | e2e / smoke runs and UAT list, writes `docs/qa/<env>-<date>.md`. |
-| `/forge:docs-sync` | After a merge | `doc-updater` aligns docs and changelog with the code. |
-| `/forge:promote <from> <to>` | Moving up the flow | Opens the PR for `develop→qa`, `qa→release`, `release→master` after a green check. |
-| `/forge:release X.Y.Z` / `tag X.Y.Z` | Releasing | Prepares the version branch + PR; after merge, tags the merge commit. |
-
-### Memory and style
-| Command | Use it when | What it does |
-|---|---|---|
-| `/forge:mem search\|show\|timeline\|add` | Before re-deriving a known fix; after learning one | Cheap layered memory (ids → one entry). |
-| `/forge:learn-style <folders>` | Once, and after your style shifts | Samples your own Python (counts only), proposes `~/.kit/style.md`, saves after your yes. |
-
-### Kit management (you maintain the kit)
-| Command | Use it when | What it does |
-|---|---|---|
-| `/forge:kit-new <kind> <name>` | You want a new skill/agent/command in the kit | Creates it in the repo from a template and registers it. Born in the repo, nothing to claim. |
-| `/forge:kit-status` | Curious what is in `~/.claude` | Read-only: orphans, ignored, drifted. |
-| `/forge:kit-claim <kind> <name>` | A unit made elsewhere belongs in the kit | Scans for secrets and personal paths, shows a dry run, copies only after your yes. |
-| `/forge:kit-review` | Now and then | Groups the lesson inbox, proposes global lessons on a `learn/<date>` branch for approval. |
-| `/forge:kit-pull` | You want updates | Fetches tags, shows what changed, changes nothing. |
-
-## 4. Typical flows
-
-**New project:** `/forge:route "…"` → `/forge:plan-project "…"` → `/forge:scaffold-project ./name.plan.md` → `/forge:design F01` (approve) → `/forge:feature F01` → repeat for each feature → `/forge:promote develop qa`. Or run `/forge:ship "…"` and answer its stops.
-
-**Existing project:** `/forge:adopt-project <path>` → review the `kit/*` branches → then `design` / `feature` / `fix` as usual.
-
-**Small bug:** `/forge:fix "…"` (budget 3 files / 20 lines; over budget means `/forge:design`).
-
-**Production bug:** `/forge:hotfix "…"` → two PRs you open.
-
-**Release:** `/forge:promote qa release` → `/forge:promote release master` → merge → `/forge:release 1.2.0` → merge → `/forge:release tag 1.2.0`.
-
-Three tracks, from `/forge:route`:
+Choose a track with `/forge:route`. The track sets how much process a task receives.
 
 | Track | For | Path |
 |---|---|---|
-| quick | one bug or tweak | `fix` |
+| quick | one bug or small change | `fix` |
 | standard | one feature | `design` → `feature` |
-| full | new project or subsystem | `ship` |
+| full | a new project or subsystem | `ship` |
 
-## 5. Agents
+**New project**
 
-Nine, each usable alone (`@forge:<name>` or through its command). Preload = agent file plus its skill digests, approx tokens.
+```text
+/forge:plan-project "your idea"
+/forge:scaffold-project ./<project>.plan.md
+/forge:design F01          # approve the design
+/forge:feature F01
+/forge:promote develop qa
+```
 
-| Agent | Model | Does | Preload |
-|---|---|---|---|
-| product-owner | sonnet | users, acceptance criteria, ≤ 4 questions | ~0.8k |
-| architect | opus | plan file or design doc | ~1.9k |
-| developer | sonnet | green code (backend and frontend); fix mode for one bug | ~1.7k |
-| tester | sonnet | red tests, regression tests, e2e / smoke / uat runs | ~1.3k |
-| ops | sonnet | Docker, CI, env check, health, rollback, backup | ~2.3k |
-| reviewer | sonnet | read-only code review | ~1.2k |
-| security-reviewer | sonnet | read-only security review, waivers | ~1.9k |
-| ai-evaluator | sonnet | eval cases and failure explanations | ~1.5k |
-| doc-updater | haiku | docs and changelog | ~0.8k |
+`/forge:ship "your idea"` runs the same path and stops at each decision.
 
-Folded from the old 13: `dev` + `frontend-dev` + `fixer` → `developer`; `qa-engineer` → `tester`; `devops` + `sre` → `ops`.
+**Existing project**
 
-## 6. Skills
+```text
+/forge:adopt-project <path>
+```
 
-Digests are loaded by agents; the long version sits in `references/` and is read only when needed.
+Review the `kit/*` branches it creates, then use `design`, `feature` or `fix` as usual.
 
-| Skill | Pack | Covers |
+**Production release**
+
+```text
+/forge:promote qa release        # open PR, merge after review
+/forge:promote release master    # open PR, merge after review
+/forge:release 1.2.0             # open version PR into master, merge after review
+/forge:release tag 1.2.0         # tag the merge commit
+```
+
+Merges are always performed by a person. Commands open pull requests and report them.
+
+## Architecture
+
+```
+forgekit/                         repository (source of truth)
+├── .claude-plugin/               marketplace definition
+├── plugins/forge/                the plugin
+│   ├── agents/                   9 agents
+│   ├── commands/                 26 commands
+│   ├── skills/                   14 rule digests, each with references/
+│   ├── hooks/                    SessionStart hooks (memory index, update notice)
+│   ├── scripts/                  memory, kit management, style sampling
+│   └── templates/                files copied into generated projects
+├── tools/check_kit.py            self-check: manifests, references, budgets, secrets
+├── tests/test_forge.py           kit test suite
+├── docs/                         supporting documents and the proof log
+└── kit.json                      registry of kit units and byte budgets
+```
+
+Key design points:
+
+- **One source of truth.** The repository is the only place kit units are edited. The installed plugin is a pinned copy.
+- **Registry.** `kit.json` lists every unit that belongs to the kit. `check_kit` fails on unregistered units and on registered units missing from disk.
+- **Digests and references.** Agents preload short skill digests. Full rules live in `references/` and are read on demand.
+- **Generated projects.** `scaffold-project` writes byte-exact templates and generates the rest from the plan.
+
+## Configuration
+
+### Environments
+
+Every generated project has four environment branches, in promotion order:
+
+| Branch | Purpose |
+|---|---|
+| `develop` | Integration of feature branches. |
+| `qa` | Quality assurance; end-to-end checks run here. |
+| `release` | Release candidate. |
+| `master` | Production. Requires an environment reviewer. |
+
+Each environment has its own compose file, configuration, secrets file and vector-store index.
+
+### Settings
+
+| Setting | Where | Effect |
 |---|---|---|
-| project-plan | core | plan format, defaults, validation |
-| test-levels | core | markers, levels, pass rules, layout |
-| release-standards | core | branch flow, commits, versions, changelog, rollback |
-| security-waivers | core | waiver format and rules |
-| ci-pipeline | core | CI rules for the four branches |
-| dependency-policy | core | pinning, updates, vulnerabilities |
-| config-db | stack | config files, secrets, DB, vector store |
-| python-style | stack | your naming, logging, structure, tools |
-| python-security | stack | 10 security rules and scanners |
-| docker-prod | stack | one stack per environment |
-| genai-client | stack | one pattern for LLM calls |
-| llm-security | stack | OWASP LLM Top 10 mapping |
-| llm-eval | stack | eval cases, metrics, thresholds |
-| frontend | stack | React / TS / Vite rules |
+| `KIT_HOOKS=minimal` | environment variable | Turns off the `test_guard` and `diff_budget` hooks. `branch_guard` always stays on. |
+| `FORGE_HOME` | environment variable | Location of the kit's personal data (default `~/.kit`). |
+| `FORGE_REPO` | environment variable | Location of the kit repository for maintenance commands. |
+| `~/.kit/style.md` | file, outside any repo | Your personal Python style profile. |
+| `.claude/style.local.md` | file, in a project | Project-specific style overrides. |
+| `~/.kit/local-ignore` | file, outside any repo | Local units the kit should ignore. |
 
-`coding-rules` and `branch-flow` are no longer skills: the four rules live in each project's `CLAUDE.md`, the hard rules in `constitution.md`, the branch map in `release-standards`.
+### Secrets
 
-## 7. Memory and tokens
+Real secrets files (`secrets/application-<env>-secrets.properties`) are git-ignored and never committed. Only the `.example` templates, which contain key names and no values, are committed. The project's `settings.json` denies reads of the real files.
 
-| Tier | What | Cost | Where |
-|---|---|---|---|
-| L0 | `CLAUDE.md` (about 25 lines incl. Karpathy's four) + constitution (10 rules) | always loaded, ~700 tokens | project root, `.claude/` |
-| L1 | memory index: ids and titles, newest first | ≤ ~500 tokens, printed at session start by a plugin hook | `.claude/memory/` |
-| L2 | `/forge:mem show <id>` or a skill's `references/` | on demand, ≤ ~150 tokens per entry | same |
-| L3 | git history | never loaded | repo |
+## Guardrails
 
-Entry types: `gotcha`, `fix`, `decision`, `preference`. Titles ≤ 10 words, bodies ≤ 600 bytes. Search returns ids and titles only.
+Generated projects receive three hooks, wired through `.claude/settings.json`:
 
-Other token rules: skills preload as digests; agents report under 40 lines; read-limits per agent (10–25 files); `check_kit --tokens` fails the build if a file outgrows its budget.
-
-## 8. Learning loop: global vs project
-
-```
-hooks (branch_guard, test_guard, diff_budget) ─► ~/.kit/inbox (one line per block)
-                                                 │  /forge:kit-review
-                      project lesson ◄───────────┤  (≥3 times in ≥2 projects = promote candidate)
-              .claude/memory/ (stays in project)  └─► global lesson ─► branch learn/<date> in the kit repo ─► you approve
-```
-
-- Project lessons never reach the kit.
-- Nothing enters the kit repo except through `kit-new` (born there), `kit-claim` (your yes) or `kit-review` (your yes, on a branch).
-- Nothing in `~/.claude` is ever read into the repo automatically. `~/.kit/local-ignore` lists personal units the kit should ignore.
-- Your personal style lives in `~/.kit/style.md` (outside the repo); a project can override it in `.claude/style.local.md`.
-
-## 9. Adding your own units
-
-1. `/forge:kit-new skill my-skill` (or `agent`, `command`). It creates the file in the repo and registers it in `kit.json`.
-2. Fill it in; keep to the byte budgets; put detail in `references/`.
-3. `python tools/check_kit.py --tokens` and `python -m unittest discover -s tests`.
-4. Commit, bump `version` in `plugins/forge/.claude-plugin/plugin.json` and `kit.json`, tag.
-
-If you already made a unit under `~/.claude`: `/forge:kit-status`, then `/forge:kit-claim`, or add its name to `~/.kit/local-ignore` to keep it personal.
-
-## 10. Updating the kit
-
-The plugin `version` is set, so Claude Code keeps you on an installed version until it changes. To update:
-
-1. `/forge:kit-pull`: fetches tags and shows what changed. It changes nothing.
-2. After you agree: `/plugin marketplace update forgekit`, then `/plugin update forge@forgekit`.
-
-Rolling back: install the earlier tag (`git checkout v0.2.0` in the kit clone, then update the marketplace).
-
-## 11. Guardrails (hooks)
-
-Copied into every scaffolded project (`.claude/settings.json`, `scripts/hooks/`):
-
-| Hook | When | Blocks |
+| Hook | When it runs | What it blocks |
 |---|---|---|
-| `branch_guard.sh` | before Edit/Write | edits on `qa`, `release`, `master`, detached HEAD |
-| `test_guard.py` | before Edit/Write | edits to tests that remove `assert` lines or add skip/xfail |
-| `diff_budget.sh` | on Stop, only during fix/hotfix | finishing with more than 3 files or 20 changed lines |
+| `branch_guard.sh` | Before each edit | Edits on `qa`, `release`, `master` or a detached HEAD. |
+| `test_guard.py` | Before each edit to `tests/` | Edits that remove assertions or add skip markers. |
+| `diff_budget.sh` | When a fix finishes | Fixes that change more than 3 files or 20 lines. |
 
-`settings.json` also denies reading `secrets/**` and force-pushes. Each block appends one line to `~/.kit/inbox`.
+Each block adds one line to the lesson inbox (`~/.kit/inbox`), which `/forge:kit-review` reads later.
 
-The plugin adds a `SessionStart` hook that prints the memory index.
+The plugin itself adds two `SessionStart` hooks: one prints the memory index, the other checks for a newer kit tag and prints one line if there is one. Neither installs anything.
 
-## 12. Repo layout
+## Memory and token budget
 
-```
-forgekit/
-├── README.md, BUILD-LOG.md, CHANGELOG.md, kit.json
-├── .claude-plugin/marketplace.json
-├── plugins/forge/
-│   ├── .claude-plugin/plugin.json
-│   ├── agents/ (9)   commands/ (26)   skills/ (14, each with references/)
-│   ├── hooks/hooks.json
-│   ├── scripts/ kit_mem, kit_new, kit_claim, kit_status, kit_pull, style_sample, kit_common
-│   └── templates/ docker/, ci/, root/, project/
-├── tools/check_kit.py
-├── tests/test_forge.py
-├── docs/FUTURE.md
-└── .github/workflows/kit-ci.yml
-```
+Memory is layered so that only the cheapest layer loads by default:
 
-`kit.json` is the registry of what belongs to the kit; `check_kit` fails on any unit that exists on disk but is not registered, or the reverse.
+| Layer | Content | Loaded |
+|---|---|---|
+| L0 | `CLAUDE.md` and the constitution | Always. Kept short. |
+| L1 | Memory index: ids and titles | At session start, capped near 500 tokens. |
+| L2 | One memory entry, or a skill reference | On demand. |
+| L3 | Git history | Never by default. |
 
-## 13. Checks and tests
+Entry types are `gotcha`, `fix`, `decision` and `preference`. Titles are short; bodies are capped.
+
+Budgets are enforced in CI. `python tools/check_kit.py --tokens` fails if a skill exceeds 2.5 KB, an agent exceeds 3 KB, or a command exceeds 3.8 KB (with one documented exception for `scaffold-project`). The current per-agent preload sizes are in [docs/BASELINE.md](docs/BASELINE.md).
+
+## Development
+
+### Set up
 
 ```bash
-python tools/check_kit.py --tokens
-python -m unittest discover -s tests -v
-claude plugin validate ./plugins/forge
+git clone https://github.com/blackorder-ok/forgekit.git
+cd forgekit
+python -m pip install pytest
 ```
 
-`check_kit` verifies manifests parse, agents' skills exist, commands launch real agents and mention real commands, template paths and placeholders, registry consistency, no secrets or personal paths, and the byte budgets. The 15 tests cover memory, kit-new/claim/status/pull, style sampling, the three hooks and `check_kit` itself.
+### Checks
 
-## 14. Known limits
+```bash
+python tools/check_kit.py --tokens          # structure, rules, budgets
+python -m pytest tests -q                   # 35 tests
+claude plugin validate ./plugins/forge      # plugin manifest
+```
 
-Honest list; details in BUILD-LOG.md.
+Expected results: `check_kit: OK`, `35 passed`.
 
-- **Not run against a live Claude Code.** Plugin and hook formats were checked against the docs only; run `claude plugin validate` first.
-- **Skill names in agent `skills:`** use plain names (`python-style`). If plugin skills need the prefix, change them to `forge:<name>` (one `sed`), then rerun `check_kit`.
-- **Templates (Docker, CI, compose, nginx, supervisord) were carried over unchanged and not run.** `cap_add` items are `TODO-VERIFY`.
-- **Command text for the 17 ported commands was only mechanically renamed**, not re-tested end to end.
-- No LICENSE yet; add one before publishing.
-- Judge-based evals, load tests, real-AWS deploy are deferred ([docs/FUTURE.md](docs/FUTURE.md)).
+Continuous integration runs the first two on every push and pull request ([`.github/workflows/kit-ci.yml`](.github/workflows/kit-ci.yml)).
+
+### Adding a unit
+
+```text
+/forge:kit-new skill <name>      # or agent, command
+```
+
+This creates the file from a template inside the repository and registers it in `kit.json`. Then:
+
+1. Fill it in and keep it within its byte budget; put detail in `references/`.
+2. Run the checks above.
+3. Add a changelog entry.
+
+To add a unit that was first made in `~/.claude`, use `/forge:kit-status` and then `/forge:kit-claim`.
+
+### Repository conventions
+
+- Python in generated projects follows snake_case files, camelCase functions, PascalCase classes and SCREAMING_SNAKE constants.
+- Most folders have a guide (`*_GUIDE.md`) that describes its contents and how to change them. Start with the guide in the folder you are editing.
+
+## Updating and versioning
+
+Versions follow Semantic Versioning. The version is recorded in three places that must agree: `kit.json`, `plugins/forge/.claude-plugin/plugin.json`, and the top entry of `CHANGELOG.md`.
+
+Installed plugins do not update automatically. To update:
+
+1. Run `/forge:kit-pull` to see what changed. It changes nothing.
+2. After you agree, run `/plugin marketplace update forgekit`, then `/plugin update forge@forgekit`.
+
+To roll back, install the previous tag from the clone (`git checkout v0.3.1`) and update the marketplace again.
+
+Release notes are in [CHANGELOG.md](CHANGELOG.md).
+
+## Status and known limits
+
+forgekit is pre-1.0. Its behaviour is tested, and its commands have been run against a demonstration project. Status by area:
+
+| Area | Status |
+|---|---|
+| Kit self-check and unit tests | Passing. |
+| Plugin install from a marketplace | Verified. |
+| Scaffolding, planning, feature build and check on a demonstration project | Verified. |
+| Promotion between `develop`, `qa` and `release` | Verified. |
+| Release preparation and tagging | Partly verified; the release pull request was opened. |
+| Hotfix end to end | Not run; it needs a real production defect. |
+| Adopting an existing repository | Steps up to the gap list verified; pull request creation not verified. |
+| Auto-update | Setting checked against the documentation; not observed in a live session. |
+
+Known limits:
+
+- Commands that need GitHub (pull requests, tags) depend on `gh` being authenticated.
+- The generated Docker and compose templates were verified on one machine; `cap_add` items are marked `TODO-VERIFY` ([docs/FUTURE.md](docs/FUTURE.md)).
+- Generated projects with no end-to-end tests pass the QA gate with a warning, not a failure.
+- LLM-judge evaluation metrics are not defined yet.
+- Load testing and a real AWS deployment step are deferred.
+
+The full record of what was run, what failed and what was waived is in [docs/PROOF_LOG.md](docs/PROOF_LOG.md).
+
+## Contributing
+
+Contributions are welcome. Before opening a pull request:
+
+1. Run the checks in [Development](#development). All must pass.
+2. Keep each change to one purpose. Update the relevant folder guide and the changelog.
+3. Do not add secrets, personal paths or machine-specific values. `check_kit` rejects them.
+4. Describe the change and how you verified it in the pull request.
+
+Report defects and feature requests as issues, with the command you ran, the output, and the version (`/plugin` shows it).
+
+## Licence
+
+Released under the [MIT Licence](LICENSE).

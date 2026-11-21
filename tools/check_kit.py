@@ -46,8 +46,8 @@ def checkAll(tokens=False, plugin=PLUGIN, root=ROOT):
             json.loads(read(p))
         except (OSError, ValueError) as e:
             PROBLEMS.append(f"{jf}: cannot parse ({e})")
-    agents = {os.path.basename(p)[:-3]: p for p in glob.glob(os.path.join(plugin, "agents", "*.md"))}
-    commands = {os.path.basename(p)[:-3]: p for p in glob.glob(os.path.join(plugin, "commands", "*.md"))}
+    agents = {os.path.basename(p)[:-3]: p for p in glob.glob(os.path.join(plugin, "agents", "*.md")) if not p.endswith("_GUIDE.md")}
+    commands = {os.path.basename(p)[:-3]: p for p in glob.glob(os.path.join(plugin, "commands", "*.md")) if not p.endswith("_GUIDE.md")}
     skills = {os.path.basename(os.path.dirname(p)): p for p in glob.glob(os.path.join(plugin, "skills", "*", "SKILL.md"))}
 
     for name, p in skills.items():
@@ -184,7 +184,7 @@ if __name__ == "__main__":
         for x in probs:
             print("  - " + x)
         sys.exit(1)
-    n = lambda d: len(glob.glob(os.path.join(PLUGIN, d)))
+    n = lambda d: len([p for p in glob.glob(os.path.join(PLUGIN, d)) if not p.endswith("_GUIDE.md")])
     print(f"check_kit: OK ({n('agents/*.md')} agents, {n('commands/*.md')} commands, {n('skills/*/SKILL.md')} skills)")
     if tokens:
         print("preload per agent (approx tokens, agent + preloaded skill digests):")

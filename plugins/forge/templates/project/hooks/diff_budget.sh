@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Git for Windows keeps grep/awk/cat/date in /usr/bin; a non-login shell may not have it on PATH.
+[ -d /usr/bin ] && PATH="/usr/bin:/bin:$PATH" && export PATH
 # Stop hook. Active only while /forge:fix or /forge:hotfix has created .claude/fix-active.
 # KIT_HOOKS=minimal turns this hook off; standard and strict keep it on.
 [ "${KIT_HOOKS:-standard}" = minimal ] && exit 0

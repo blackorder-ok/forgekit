@@ -19,6 +19,8 @@ def _rmRo(func, path, _exc):
     func(path)
 
 
+# Git for Windows keeps grep/awk/cat/date in usr/bin, which a non-login bash may not have on PATH.
+GIT_USR_BIN = r"C:\Program Files\Git\usr\bin"  # harmless on Linux CI, where the tools are already on PATH
 BASH = next((p for p in (r"C:\Program Files\Git\usr\bin\bash.exe", r"C:\Program Files\Git\bin\bash.exe") if os.path.exists(p)), "bash")
 sys.path.insert(0, SCRIPTS)
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -176,7 +178,7 @@ class HookTests(TmpCase):
         return d
 
     def test_branch_guard(self):
-        env = dict(os.environ, HOME=self.tmp)
+        env = dict(os.environ, HOME=self.tmp, PATH=os.environ.get("PATH", ""))
         for branch, code in (("master", 2), ("qa", 2), ("develop", 0)):
             d = self._git(branch)
             r = subprocess.run([BASH, os.path.join(HOOKS, "branch_guard.sh")], cwd=d, env=env, capture_output=True)
@@ -186,7 +188,7 @@ class HookTests(TmpCase):
 
     def test_diff_budget(self):
         d = self._git("develop")
-        env = dict(os.environ, HOME=self.tmp)
+        env = dict(os.environ, HOME=self.tmp, PATH=os.environ.get("PATH", ""))
         run = lambda: subprocess.run([BASH, os.path.join(HOOKS, "diff_budget.sh")], cwd=d, env=env, input=b"{}", capture_output=True).returncode
         self.assertEqual(run(), 0)  # no marker file
         os.makedirs(os.path.join(d, ".claude"))

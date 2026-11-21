@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Git for Windows keeps date/basename/mkdir in /usr/bin; a non-login shell may not have it on PATH.
+[ -d /usr/bin ] && PATH="/usr/bin:/bin:$PATH" && export PATH
 # PreToolUse hook. Exit 2 blocks the edit and shows the message to Claude.
 # Also appends one line to the lesson inbox (~/.kit/inbox) so /forge:kit-review can count recurrences.
 inbox="${HOME}/.kit/inbox"
