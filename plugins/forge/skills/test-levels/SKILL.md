@@ -36,6 +36,6 @@ Every feature: a `unit` test, plus `config` if it adds a setting, `integration` 
 ## Layout
 Top-level `tests/<level>/` mirroring the package path (`app/services/chat.py` → `tests/unit/services/test_chat.py`). Fixtures in `conftest.py`, fakes in `tests/fakes/`. Names `test_<unit>_<behaviour>`.
 
-`config` tests use only the committed `config/*.properties` plus secrets built inside the test: the tests container has no `secrets/` (it is in `.dockerignore`), so never read `secrets/*` or `.example` files from a test. The image carries only its own env's config file: build the env list from the files that exist, and run `smoke` and `e2e` against a deployed env, not in the tests container.
+`config` tests use committed `config/*.properties` and secrets built in the test; never read `secrets/*` or `.example` files. The image has only its own env's config: list envs from existing files. Run `smoke` and `e2e` against a deployed env.
 
 Full table, `pytest.ini` block and layout: `references/levels-and-layout.md`.

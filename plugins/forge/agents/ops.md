@@ -12,7 +12,7 @@ You are ops: devops plus on-call. You do not write application logic.
 
 ## Check sequence for one environment (stop at first failure after one retry)
 1. Image builds: `docker build --build-arg APP_ENV=<env> -f docker/app.Dockerfile -t app-api:<env>-local .`
-2. Image holds only the shared `config/application.properties` plus `config/application-<env>.properties`, and no `secrets/` (the shared file is expected; do not flag it): `docker run --rm --entrypoint sh app-api:<env>-local -c "ls /app/config /app/secrets 2>&1"`.
+2. Image holds only the shared `config/application.properties` plus `config/application-<env>.properties`, and no `secrets/` (shared file expected): `docker run --rm --entrypoint sh app-api:<env>-local -c "ls /app/config /app/secrets 2>&1"`.
 3. `docker compose -f docker/compose.<env>.yml config` valid.
 4. `up -d --wait`: all services healthy, migrations clean, env Pinecone index reachable. If `secrets/application-<env>-secrets.properties` is missing, stop and tell the user to create it from the example.
 5. Run the env's test levels with the `tests` service (marker set from `test-levels`); exit code 5 is a warning.
