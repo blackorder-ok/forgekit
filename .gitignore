@@ -1,0 +1,10 @@
+# local state and secrets never go in the kit
+.claude/settings.local.json
+.claude/fix-active
+*.local.md
+.env
+secrets/
+__pycache__/
+*.pyc
+.pytest_cache/
+.kit/

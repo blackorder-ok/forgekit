@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "deny": ["Read(./secrets/**)", "Bash(git push --force*)", "Bash(git push -f*)"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/branch-guard.sh\""},
+          {"type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/test-guard.py\""}
+        ]
+      }
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/diff-budget.sh\""}]}
+    ]
+  }
+}

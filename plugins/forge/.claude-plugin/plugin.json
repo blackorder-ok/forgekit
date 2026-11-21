@@ -1,0 +1,15 @@
+{
+  "name": "forge",
+  "version": "0.3.0",
+  "description": "forgekit: plan, scaffold, build, review and ship production-grade Python/FastAPI apps in your own style, with token-lean agents, skills and commands.",
+  "author": {
+    "name": "Omkar"
+  },
+  "keywords": [
+    "python",
+    "fastapi",
+    "agents",
+    "workflow",
+    "production"
+  ]
+}

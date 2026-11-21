@@ -1,0 +1,171 @@
+{
+  "name": "forgekit",
+  "version": "0.3.0",
+  "plugin": "forge",
+  "budgets": {
+    "skill_bytes": 2500,
+    "agent_bytes": 3000,
+    "command_bytes": 3500,
+    "overrides": {
+      "commands/scaffold-project.md": {
+        "bytes": 7000,
+        "reason": "writes the whole project skeleton; every step is a file the user relies on"
+      }
+    }
+  },
+  "units": {
+    "skills": {
+      "ci-pipeline": {
+        "origin": "kit"
+      },
+      "config-db": {
+        "origin": "kit"
+      },
+      "dependency-policy": {
+        "origin": "kit"
+      },
+      "docker-prod": {
+        "origin": "kit"
+      },
+      "frontend": {
+        "origin": "kit"
+      },
+      "genai-client": {
+        "origin": "kit"
+      },
+      "llm-eval": {
+        "origin": "kit"
+      },
+      "llm-security": {
+        "origin": "kit"
+      },
+      "project-plan": {
+        "origin": "kit"
+      },
+      "python-security": {
+        "origin": "kit"
+      },
+      "python-style": {
+        "origin": "kit"
+      },
+      "release-standards": {
+        "origin": "kit"
+      },
+      "security-waivers": {
+        "origin": "kit"
+      },
+      "test-levels": {
+        "origin": "kit"
+      }
+    },
+    "agents": {
+      "ai-evaluator": {
+        "origin": "kit"
+      },
+      "architect": {
+        "origin": "kit"
+      },
+      "developer": {
+        "origin": "kit"
+      },
+      "doc-updater": {
+        "origin": "kit"
+      },
+      "ops": {
+        "origin": "kit"
+      },
+      "product-owner": {
+        "origin": "kit"
+      },
+      "reviewer": {
+        "origin": "kit"
+      },
+      "security-reviewer": {
+        "origin": "kit"
+      },
+      "tester": {
+        "origin": "kit"
+      }
+    },
+    "commands": {
+      "adopt-project": {
+        "origin": "kit"
+      },
+      "check": {
+        "origin": "kit"
+      },
+      "converge": {
+        "origin": "kit"
+      },
+      "design": {
+        "origin": "kit"
+      },
+      "docs-sync": {
+        "origin": "kit"
+      },
+      "doctor": {
+        "origin": "kit"
+      },
+      "eval": {
+        "origin": "kit"
+      },
+      "feature": {
+        "origin": "kit"
+      },
+      "fix": {
+        "origin": "kit"
+      },
+      "hotfix": {
+        "origin": "kit"
+      },
+      "kit-claim": {
+        "origin": "kit"
+      },
+      "kit-new": {
+        "origin": "kit"
+      },
+      "kit-pull": {
+        "origin": "kit"
+      },
+      "kit-review": {
+        "origin": "kit"
+      },
+      "kit-status": {
+        "origin": "kit"
+      },
+      "learn-style": {
+        "origin": "kit"
+      },
+      "mem": {
+        "origin": "kit"
+      },
+      "plan-project": {
+        "origin": "kit"
+      },
+      "promote": {
+        "origin": "kit"
+      },
+      "qa": {
+        "origin": "kit"
+      },
+      "release": {
+        "origin": "kit"
+      },
+      "review": {
+        "origin": "kit"
+      },
+      "route": {
+        "origin": "kit"
+      },
+      "scaffold-project": {
+        "origin": "kit"
+      },
+      "security-review": {
+        "origin": "kit"
+      },
+      "ship": {
+        "origin": "kit"
+      }
+    }
+  }
+}

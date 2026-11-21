@@ -1,0 +1,96 @@
+name: ci
+
+on:
+  push:
+    branches: [develop, qa, release, master, "feature/**"]
+  pull_request:
+    branches: [develop, qa, release, master]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: pip install --require-hashes -r backend/requirements-dev.txt
+      - run: ruff check .
+      - run: mypy backend
+      - name: Unit, config, and security tests with coverage floor
+        run: pytest -q -m "unit or config or security" --cov=backend/app --cov-fail-under=80
+      - run: bandit -r backend -ll
+      - run: pip-audit -r backend/requirements.txt
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            frontend
+      - name: Check for a frontend
+        id: detect
+        run: |
+          if [ -f package.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.present == 'true'
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - if: steps.detect.outputs.present == 'true'
+        run: npm ci
+      - if: steps.detect.outputs.present == 'true'
+        run: npm run typecheck
+      - if: steps.detect.outputs.present == 'true'
+        run: npm test
+      - if: steps.detect.outputs.present == 'true'
+        run: npm run build
+      - if: steps.detect.outputs.present == 'true'
+        run: test -z "$(grep -rl '\.innerHTML\s*=' src || true)"
+
+  develop:
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    needs: verify
+    uses: ./.github/workflows/env-tests.yml
+    with:
+      env: develop
+    secrets: inherit
+
+  qa:
+    if: github.ref == 'refs/heads/qa' && github.event_name == 'push'
+    needs: verify
+    uses: ./.github/workflows/env-tests.yml
+    with:
+      env: qa
+    secrets: inherit
+
+  release:
+    if: github.ref == 'refs/heads/release' && github.event_name == 'push'
+    needs: verify
+    uses: ./.github/workflows/env-tests.yml
+    with:
+      env: release
+    secrets: inherit
+
+  master:
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    needs: verify
+    uses: ./.github/workflows/env-tests.yml
+    with:
+      env: master
+    secrets: inherit

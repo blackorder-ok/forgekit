@@ -1,0 +1,14 @@
+{
+  "name": "forgekit",
+  "owner": {
+    "name": "Omkar"
+  },
+  "plugins": [
+    {
+      "name": "forge",
+      "source": "./plugins/forge",
+      "description": "Plan, scaffold, build, review and ship production-grade apps with token-lean agents, skills and commands."
+    }
+  ],
+  "description": "forgekit: a token-lean Claude Code kit for building production Python/FastAPI apps."
+}

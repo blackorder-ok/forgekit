@@ -1,0 +1,8 @@
+{
+  "extraKnownMarketplaces": {
+    "forgekit": {
+      "source": {"source": "directory", "path": "<path to your forgekit clone>"},
+      "autoUpdate": false
+    }
+  }
+}

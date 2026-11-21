@@ -1,0 +1,59 @@
+name: env-tests
+
+on:
+  workflow_call:
+    inputs:
+      env:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}
+    env:
+      ENV_NAME: ${{ inputs.env }}
+      CP_SECRETS: ${{ secrets.CP_SECRETS }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write secrets file
+        run: printf '%s\n' "$CP_SECRETS" > "secrets/application-$ENV_NAME-secrets.properties"
+
+      - name: Build images for this environment (frontend and backend first, then app)
+        run: |
+          docker compose -f docker/compose.$ENV_NAME.yml --profile build build frontend backend
+          docker compose -f docker/compose.$ENV_NAME.yml build app
+
+      - name: Start stack
+        run: docker compose -f docker/compose.$ENV_NAME.yml up -d --wait
+
+      - name: Run this environment's test levels
+        run: |
+          case "$ENV_NAME" in
+            develop) MARKERS="integration or contract" ;;
+            qa)      MARKERS="integration or contract or security or migration or e2e or llm" ;;
+            release) MARKERS="e2e or llm or backup or uat" ;;
+            # load: deferred, add back when load testing is built (see FUTURE.md)
+            master)  MARKERS="smoke" ;;
+            *) echo "unknown environment"; exit 1 ;;
+          esac
+          set +e
+          docker compose -f docker/compose.$ENV_NAME.yml --profile test run --rm tests pytest -q -m "$MARKERS"
+          rc=$?
+          set -e
+          # pytest exit 5 means no test carries these markers yet. Warn and continue; any other failure fails the job.
+          if [ "$rc" -eq 5 ]; then
+            echo "::warning::No tests selected for $ENV_NAME ($MARKERS). Add tests before this level is enforced."
+          elif [ "$rc" -ne 0 ]; then
+            exit "$rc"
+          fi
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose -f docker/compose.$ENV_NAME.yml down -v || true
+          rm -f "secrets/application-$ENV_NAME-secrets.properties"

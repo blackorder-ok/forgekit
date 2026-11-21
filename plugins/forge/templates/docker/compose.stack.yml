@@ -1,0 +1,126 @@
+# One stack per environment: {{ENV}}. Copy to docker/compose.{{ENV}}.yml.
+#
+# Build, in this order (see docker-prod):
+#   docker compose -f docker/compose.{{ENV}}.yml --profile build build frontend backend
+#   docker compose -f docker/compose.{{ENV}}.yml build app
+# Run:
+#   docker compose -f docker/compose.{{ENV}}.yml up -d --wait
+#
+# Services:
+#   frontend  build only (profile build): static files for the app image
+#   backend   build only (profile build): the Python backend image
+#   app       one runtime container: nginx, backend, MySQL 8.0, Ollama (develop only)
+#   aws-emulator  AWS API emulator for S3, SQS, and similar. It is given no Docker access.
+#   tests     pytest on the backend test stage, behind the test profile
+
+name: "{{PROJECT}}-{{ENV}}"
+
+networks:
+  edge: {}               # outbound access for the cloud LLM and Pinecone
+  internal:
+    internal: true       # no route out of the host network; the AWS emulator sits here
+
+volumes:
+  app-data: {}           # MySQL data, Ollama models, app files. Kept across restarts.
+  aws-emulator-data: {}  # AWS emulator state. Kept across restarts.
+
+x-hardening: &hardening
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  init: true
+
+services:
+  frontend:            # removed by /scaffold-project when the plan has no page
+    profiles: ["build"]
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+      target: artifact
+    image: "app-frontend:{{ENV}}-local"
+
+  backend:
+    profiles: ["build"]
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+      target: runtime
+      args:
+        APP_ENV: "{{ENV}}"
+    image: "app-backend:{{ENV}}-local"
+
+  app:
+    <<: *hardening
+    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID, FOWNER]   # TODO-VERIFY: minimal set for mysqld and nginx
+    build:
+      context: ..
+      dockerfile: docker/app.Dockerfile
+      args:
+        APP_ENV: "{{ENV}}"
+        BACKEND_IMAGE: "app-backend:{{ENV}}-local"
+        FRONTEND_IMAGE: "app-frontend:{{ENV}}-local"
+    image: "app-api:{{ENV}}-local"
+    environment:
+      APP_ENV: "{{ENV}}"
+    tmpfs:
+      - /tmp
+      - /run
+    volumes:
+      - app-data:/var/lib
+      - "../secrets/application-{{ENV}}-secrets.properties:/app/secrets/application-{{ENV}}-secrets.properties:ro"
+    ports:
+      - "127.0.0.1:{{APP_PORT}}:80"  # the frontend and /api, on this machine only
+    networks: [edge, internal]
+    depends_on:
+      aws-emulator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/api/health"]
+      interval: 10s
+      retries: 12
+      start_period: 60s
+
+  aws-emulator:
+    <<: *hardening
+    # AWS emulator's entrypoint chroots and switches groups at start, so it needs these three.
+    cap_add: [SYS_CHROOT, SETUID, SETGID]
+    image: "{{AWS_EMULATOR_IMAGE}}"
+    environment:
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_STORAGE_PERSISTENT_PATH: /app/data
+      # FLOCI_SERVICES_RDS_ENABLED=false was tested: the AWS emulator 2.4.0 still accepts RDS calls, so it is not a real disable.
+      # TODO-VERIFY: EC2 disable variable (not in the AWS emulator docs yet)
+    tmpfs:
+      - /tmp
+    volumes:
+      - aws-emulator-data:/app/data
+    ports:
+      - "127.0.0.1:{{AWS_EMULATOR_PORT}}:4566"
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/4566"]   # the AWS emulator image has no curl or wget
+      interval: 5s
+      retries: 30
+
+  tests:
+    profiles: ["test"]     # run with: docker compose -f docker/compose.{{ENV}}.yml --profile test run --rm tests
+    # Shares the app container network namespace: MySQL on 127.0.0.1, outbound edge access,
+    # and the AWS emulator by name. No separate network is needed.
+    network_mode: "service:app"
+    depends_on:
+      app:
+        condition: service_healthy
+    <<: *hardening
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+      target: test
+      args:
+        APP_ENV: "{{ENV}}"
+    environment:
+      APP_ENV: "{{ENV}}"
+      PYTEST_ADDOPTS: "-p no:cacheprovider"
+    tmpfs:
+      - /tmp
+    volumes:
+      - "../secrets/application-{{ENV}}-secrets.properties:/app/secrets/application-{{ENV}}-secrets.properties:ro"

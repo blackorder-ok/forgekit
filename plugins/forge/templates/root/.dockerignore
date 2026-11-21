@@ -1,0 +1,10 @@
+.git
+.github
+docs
+evals
+release-notes
+frontend/node_modules
+**/__pycache__
+**/.venv
+# Secrets never enter the build context
+secrets
