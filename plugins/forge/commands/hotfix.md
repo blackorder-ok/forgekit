@@ -11,7 +11,7 @@ Hotfix: $ARGUMENTS
 - The bug is in production (`master`). If it is only on `develop` or a feature branch, use `/forge:fix` instead.
 
 ## Steps
-1. **Branch.** Run `git fetch` and create `hotfix/<short-name>` from `master`, then switch to it. The branch-guard hook allows edits on `hotfix/*`.
+1. **Branch.** Run `git fetch` and create `hotfix/<short-name>` from `master`, then switch to it. The branch_guard hook allows edits on `hotfix/*`.
 2. **Mark the run.** Create `.claude/fix-active`. Remove it at the end.
 3. **Reproduce.** Same as `/forge:fix` step 2: one failing regression test, marked with its level. No test, no fix.
 4. **Root cause and fix.** Same as `/forge:fix` steps 3 to 4.

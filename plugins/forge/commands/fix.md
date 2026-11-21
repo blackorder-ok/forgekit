@@ -11,11 +11,11 @@ Bug: $ARGUMENTS
 - Run `/forge:doctor`. `NOT READY` stops the run.
 
 ## Steps
-1. **Mark the run.** Create the empty file `.claude/fix-active`. The diff-budget hook (`templates/project/hooks/diff-budget.sh`) reads it, and the file is removed at the end.
+1. **Mark the run.** Create the empty file `.claude/fix-active`. The diff_budget hook (`templates/project/hooks/diff_budget.sh`) reads it, and the file is removed at the end.
 2. **Reproduce.** Launch `tester` to write one regression test that fails for the bug, marked with its level from `test-levels`. Run it and confirm it fails for the reported reason. No test, no fix: if it cannot be reproduced, stop and report what was tried.
 3. **Root cause.** State the cause in one sentence, with `file:line`.
 4. **Fix.** Launch `developer` with the bug, the root cause, and the failing test. Require the regression test to pass.
-5. **Budget.** The diff-budget hook blocks the stop if the change is over 3 files or 20 changed lines. If it blocks, do not widen the budget. Report and recommend `/forge:design`.
+5. **Budget.** The diff_budget hook blocks the stop if the change is over 3 files or 20 changed lines. If it blocks, do not widen the budget. Report and recommend `/forge:design`.
 6. **Review.** Launch `reviewer` with one question: does every changed line trace to this bug? Any no is a blocker, and `developer` reverts that line.
 7. **Gates.** Run the affected tests and the `unit` level. Then launch `ops` with `/forge:check <branch's environment>`. Require `GREEN`.
 8. **Clean up.** Delete `.claude/fix-active`. Docs need no change unless behaviour changed. If it did, launch `doc-updater`.

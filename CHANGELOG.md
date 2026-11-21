@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.1] - 2026-11-21
+### Changed
+- Naming rules enforced: snake_case file names (hooks renamed to `branch_guard.sh`, `diff_budget.sh`, `test_guard.py`), camelCase functions and variables, PascalCase classes, SCREAMING_SNAKE_CASE constants and globals. `check_kit` lints them; `python-style` states them.
+
 ## [0.3.0] - 2026-11-21
 ### Added
 - `KIT_HOOKS=minimal` switch for test-guard and diff-budget (branch-guard always on).

@@ -7,13 +7,13 @@
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/branch-guard.sh\""},
-          {"type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/test-guard.py\""}
+          {"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/branch_guard.sh\""},
+          {"type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/scripts/hooks/test_guard.py\""}
         ]
       }
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/diff-budget.sh\""}]}
+      {"hooks": [{"type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/diff_budget.sh\""}]}
     ]
   }
 }

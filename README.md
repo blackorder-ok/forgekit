@@ -206,7 +206,7 @@ Other token rules: skills preload as digests; agents report under 40 lines; read
 ## 8. Learning loop: global vs project
 
 ```
-hooks (branch-guard, test-guard, diff-budget) ─► ~/.kit/inbox (one line per block)
+hooks (branch_guard, test_guard, diff_budget) ─► ~/.kit/inbox (one line per block)
                                                  │  /forge:kit-review
                       project lesson ◄───────────┤  (≥3 times in ≥2 projects = promote candidate)
               .claude/memory/ (stays in project)  └─► global lesson ─► branch learn/<date> in the kit repo ─► you approve
@@ -241,9 +241,9 @@ Copied into every scaffolded project (`.claude/settings.json`, `scripts/hooks/`)
 
 | Hook | When | Blocks |
 |---|---|---|
-| `branch-guard.sh` | before Edit/Write | edits on `qa`, `release`, `master`, detached HEAD |
-| `test-guard.py` | before Edit/Write | edits to tests that remove `assert` lines or add skip/xfail |
-| `diff-budget.sh` | on Stop, only during fix/hotfix | finishing with more than 3 files or 20 changed lines |
+| `branch_guard.sh` | before Edit/Write | edits on `qa`, `release`, `master`, detached HEAD |
+| `test_guard.py` | before Edit/Write | edits to tests that remove `assert` lines or add skip/xfail |
+| `diff_budget.sh` | on Stop, only during fix/hotfix | finishing with more than 3 files or 20 changed lines |
 
 `settings.json` also denies reading `secrets/**` and force-pushes. Each block appends one line to `~/.kit/inbox`.
 

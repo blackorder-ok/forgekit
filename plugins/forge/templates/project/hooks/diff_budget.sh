@@ -10,8 +10,8 @@ read -r files lines < <(git diff --numstat HEAD | awk 'NF==3 && $1 ~ /^[0-9]+$/ 
 budget_files=3
 budget_lines=20
 if [ "$files" -gt "$budget_files" ] || [ "$lines" -gt "$budget_lines" ]; then
-  mkdir -p "${HOME}/.kit" 2>/dev/null && printf '%s\tdiff-budget\t%s\tfix over budget %s files %s lines\n' "$(date +%F)" "$(basename "$PWD")" "$files" "$lines" >> "${HOME}/.kit/inbox" 2>/dev/null
-  echo "diff-budget: $files files and $lines changed lines; the budget is $budget_files files and $budget_lines lines. Stop, report, and recommend /forge:design." >&2
+  mkdir -p "${HOME}/.kit" 2>/dev/null && printf '%s\tdiff_budget\t%s\tfix over budget %s files %s lines\n' "$(date +%F)" "$(basename "$PWD")" "$files" "$lines" >> "${HOME}/.kit/inbox" 2>/dev/null
+  echo "diff_budget: $files files and $lines changed lines; the budget is $budget_files files and $budget_lines lines. Stop, report, and recommend /forge:design." >&2
   exit 2
 fi
 exit 0

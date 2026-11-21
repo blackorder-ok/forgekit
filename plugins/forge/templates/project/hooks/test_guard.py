@@ -13,7 +13,7 @@ def note(msg):
         inbox = os.path.join(os.path.expanduser("~"), ".kit", "inbox")
         os.makedirs(os.path.dirname(inbox), exist_ok=True)
         with open(inbox, "a", encoding="utf-8") as f:
-            f.write(f"{time.strftime('%F')}\ttest-guard\t{os.path.basename(os.getcwd())}\t{msg}\n")
+            f.write(f"{time.strftime('%F')}\ttest_guard\t{os.path.basename(os.getcwd())}\t{msg}\n")
     except OSError:
         pass
 
@@ -33,10 +33,10 @@ def check(ti):
         pairs = [(old, ti.get("content", ""))]
     for old, new in pairs:
         if len(re.findall(r"\bassert\b", old)) > len(re.findall(r"\bassert\b", new)):
-            return "test-guard: this edit removes assert lines from a test. Fix the code, not the test."
+            return "test_guard: this edit removes assert lines from a test. Fix the code, not the test."
         for marker in SKIP_MARKERS:
             if new.count(marker) > old.count(marker):
-                return f"test-guard: this edit adds {marker}. Tests may not be skipped or marked xfail."
+                return f"test_guard: this edit adds {marker}. Tests may not be skipped or marked xfail."
     return None
 
 

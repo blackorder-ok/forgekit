@@ -13,7 +13,7 @@ SCRIPTS = os.path.join(ROOT, "plugins", "forge", "scripts")
 HOOKS = os.path.join(ROOT, "plugins", "forge", "templates", "project", "hooks")
 # On Windows, plain "bash" can resolve to WSL's bash.exe, which cannot see Windows paths.
 # Prefer Git Bash when it is installed, else fall back to PATH.
-def _rm_ro(func, path, _exc):
+def _rmRo(func, path, _exc):
     # Windows: git marks object files read-only, so plain rmtree fails on cleanup.
     os.chmod(path, 0o666)
     func(path)
@@ -33,9 +33,9 @@ import style_sample  # noqa: E402
 import check_kit  # noqa: E402
 import importlib.util  # noqa: E402
 
-spec = importlib.util.spec_from_file_location("test_guard", os.path.join(HOOKS, "test-guard.py"))
-test_guard = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(test_guard)
+SPEC = importlib.util.spec_from_file_location("test_guard", os.path.join(HOOKS, "test_guard.py"))
+TEST_GUARD = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(TEST_GUARD)
 
 
 class TmpCase(unittest.TestCase):
@@ -72,13 +72,13 @@ class MemTests(TmpCase):
         p = os.path.join(self.tmp, "inbox")
         with open(p, "w") as f:
             for proj in ("a", "b", "b"):
-                f.write(f"2026-11-01\tbranch-guard\t{proj}\tedit blocked on qa\n")
-            f.write("2026-11-02\ttest-guard\ta\tremoves asserts\n")
+                f.write(f"2026-11-01\tbranch_guard\t{proj}\tedit blocked on qa\n")
+            f.write("2026-11-02\ttest_guard\ta\tremoves asserts\n")
         out = kit_mem.inbox(path=p)
-        self.assertIn("3x branch-guard:edit blocked on qa", out)
+        self.assertIn("3x branch_guard:edit blocked on qa", out)
         self.assertIn("PROMOTE?", out.splitlines()[0])
         self.assertNotIn("PROMOTE?", out.splitlines()[1])
-        kit_mem.inbox(clear="branch-guard:edit blocked on qa", path=p)
+        kit_mem.inbox(clear="branch_guard:edit blocked on qa", path=p)
         self.assertEqual(len(kit_mem.readInbox(p)), 1)
 
 
@@ -160,13 +160,13 @@ class PullStyleTests(TmpCase):
 class HookTests(TmpCase):
     def test_test_guard_blocks_assert_removal_and_skips(self):
         ti = {"file_path": "x/tests/unit/test_a.py", "old_string": "assert a == 1", "new_string": "pass"}
-        self.assertIn("removes assert", test_guard.check(ti))
+        self.assertIn("removes assert", TEST_GUARD.check(ti))
         ti = {"file_path": "x/tests/unit/test_a.py", "old_string": "x", "new_string": "@pytest.mark.skip"}
-        self.assertIn("adds", test_guard.check(ti))
+        self.assertIn("adds", TEST_GUARD.check(ti))
         ti = {"file_path": "x/app/a.py", "old_string": "assert a", "new_string": "pass"}
-        self.assertIsNone(test_guard.check(ti))
+        self.assertIsNone(TEST_GUARD.check(ti))
         ti = {"file_path": "x/tests/unit/test_a.py", "old_string": "assert a", "new_string": "assert a\nassert b"}
-        self.assertIsNone(test_guard.check(ti))
+        self.assertIsNone(TEST_GUARD.check(ti))
 
     def _git(self, branch):
         d = os.path.join(self.tmp, "g")
@@ -179,15 +179,15 @@ class HookTests(TmpCase):
         env = dict(os.environ, HOME=self.tmp)
         for branch, code in (("master", 2), ("qa", 2), ("develop", 0)):
             d = self._git(branch)
-            r = subprocess.run([BASH, os.path.join(HOOKS, "branch-guard.sh")], cwd=d, env=env, capture_output=True)
+            r = subprocess.run([BASH, os.path.join(HOOKS, "branch_guard.sh")], cwd=d, env=env, capture_output=True)
             self.assertEqual(r.returncode, code, branch)
-            shutil.rmtree(d, onerror=_rm_ro)
+            shutil.rmtree(d, onerror=_rmRo)
         self.assertTrue(os.path.exists(os.path.join(self.tmp, ".kit", "inbox")))
 
     def test_diff_budget(self):
         d = self._git("develop")
         env = dict(os.environ, HOME=self.tmp)
-        run = lambda: subprocess.run([BASH, os.path.join(HOOKS, "diff-budget.sh")], cwd=d, env=env, input=b"{}", capture_output=True).returncode
+        run = lambda: subprocess.run([BASH, os.path.join(HOOKS, "diff_budget.sh")], cwd=d, env=env, input=b"{}", capture_output=True).returncode
         self.assertEqual(run(), 0)  # no marker file
         os.makedirs(os.path.join(d, ".claude"))
         open(os.path.join(d, ".claude", "fix-active"), "w").close()
@@ -224,10 +224,10 @@ class V03Tests(unittest.TestCase):
         os.environ["KIT_HOOKS"] = "minimal"
         try:
             bad = {"file_path": "tests/test_x.py", "old_string": "assert x == 1", "new_string": "pass"}
-            self.assertIsNone(test_guard.check(bad))
+            self.assertIsNone(TEST_GUARD.check(bad))
         finally:
             del os.environ["KIT_HOOKS"]
-        self.assertIsNotNone(test_guard.check({"file_path": "tests/test_x.py", "old_string": "assert x == 1", "new_string": "pass"}))
+        self.assertIsNotNone(TEST_GUARD.check({"file_path": "tests/test_x.py", "old_string": "assert x == 1", "new_string": "pass"}))
 
     def test_notice_is_silent_without_repo(self):
         env = dict(os.environ, FORGE_HOME=tempfile.mkdtemp())
@@ -255,6 +255,21 @@ class V03Tests(unittest.TestCase):
         _, info = check_kit.checkAll(tokens=True, plugin=os.path.join(ROOT, "plugins", "forge"), root=ROOT)
         feature = ["tester", "developer", "reviewer", "security-reviewer", "ops", "ai-evaluator", "doc-updater"]
         self.assertLess(sum(info[a] for a in feature), 8000)
+
+
+class NamingTests(unittest.TestCase):
+    def test_naming_lint_flags_violations(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        shutil.copytree(ROOT, os.path.join(tmp, "k"), ignore=shutil.ignore_patterns(".git", "__pycache__"))
+        k = os.path.join(tmp, "k")
+        with open(os.path.join(k, "tools", "bad-name.py"), "w", encoding="utf-8") as f:
+            f.write("my_var = 1\ndef do_thing():\n    pass\n")
+        probs, _ = check_kit.checkAll(tokens=False, plugin=os.path.join(k, "plugins", "forge"), root=k)
+        joined = "\n".join(probs)
+        self.assertIn("must be snake_case", joined)
+        self.assertIn("function do_thing must be camelCase", joined)
+        self.assertIn("variable my_var must be SCREAMING_SNAKE_CASE", joined)
 
 
 if __name__ == "__main__":

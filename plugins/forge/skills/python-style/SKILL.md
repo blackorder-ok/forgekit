@@ -7,10 +7,10 @@ pack: stack
 # Python style (Python 3.11)
 
 ## Naming
-Files `snake_case.py` · functions, methods, variables `camelCase` · classes `PascalCase` · constants `UPPER_SNAKE` · tests `test_<unit>_<behaviour>`.
+File names `snake_case` (every file, scripts and hooks too) · functions, methods, variables `camelCase` · classes, interfaces, enums, type aliases `PascalCase` · constants and module-level (global) variables `SCREAMING_SNAKE_CASE` · tests `test_<unit>_<behaviour>`.
 
 ## Logging
-Top of every module `logger = LoggingHandler().getLogs()`. Messages start with a tag: `[LLM] ...`, `[UTILS][CONFIG] ...`. Log lengths and ids, never prompts, bodies or secrets.
+Top of every module `LOGGER = LoggingHandler().getLogs()`. Messages start with a tag: `[LLM] ...`, `[UTILS][CONFIG] ...`. Log lengths and ids, never prompts, bodies or secrets.
 
 ## Structure
 Shared services (config, logging) are singletons via `SingletonMetaClass`. Type hints on all public functions and attributes; a one-line docstring on public functions and classes. A usecase is a class with `createPromptMessage`, `modelRequest`, `execute`.

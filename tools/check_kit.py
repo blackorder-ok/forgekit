@@ -13,7 +13,7 @@ import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PLUGIN = os.path.join(ROOT, "plugins", "forge")
-problems = []
+PROBLEMS = []
 
 
 def read(path):
@@ -38,14 +38,14 @@ def front(text):
 def checkAll(tokens=False, plugin=PLUGIN, root=ROOT):
     global PLUGIN, ROOT
     PLUGIN, ROOT = plugin, root
-    problems.clear()
+    PROBLEMS.clear()
     info = {}
     for jf in ("kit.json", ".claude-plugin/marketplace.json", "plugins/forge/.claude-plugin/plugin.json", "plugins/forge/hooks/hooks.json"):
         p = os.path.join(root, jf)
         try:
             json.loads(read(p))
         except (OSError, ValueError) as e:
-            problems.append(f"{jf}: cannot parse ({e})")
+            PROBLEMS.append(f"{jf}: cannot parse ({e})")
     agents = {os.path.basename(p)[:-3]: p for p in glob.glob(os.path.join(plugin, "agents", "*.md"))}
     commands = {os.path.basename(p)[:-3]: p for p in glob.glob(os.path.join(plugin, "commands", "*.md"))}
     skills = {os.path.basename(os.path.dirname(p)): p for p in glob.glob(os.path.join(plugin, "skills", "*", "SKILL.md"))}
@@ -53,49 +53,63 @@ def checkAll(tokens=False, plugin=PLUGIN, root=ROOT):
     for name, p in skills.items():
         fm = front(read(p))
         if fm.get("name") != name:
-            problems.append(f"skills/{name}: frontmatter name must be '{name}'")
+            PROBLEMS.append(f"skills/{name}: frontmatter name must be '{name}'")
         if not fm.get("description"):
-            problems.append(f"skills/{name}: missing description")
+            PROBLEMS.append(f"skills/{name}: missing description")
         if fm.get("pack") not in ("core", "stack"):
-            problems.append(f"skills/{name}: pack must be core or stack")
+            PROBLEMS.append(f"skills/{name}: pack must be core or stack")
     for name, p in agents.items():
         t = read(p)
         fm = front(t)
         if fm.get("name") != name:
-            problems.append(f"agents/{name}: frontmatter name must be '{name}'")
+            PROBLEMS.append(f"agents/{name}: frontmatter name must be '{name}'")
         for f in ("description", "tools", "model"):
             if not fm.get(f):
-                problems.append(f"agents/{name}: missing {f}")
+                PROBLEMS.append(f"agents/{name}: missing {f}")
         m = re.search(r"^skills: \[(.*)\]$", t, re.M)
         for s in [x.strip() for x in (m.group(1).split(",") if m else []) if x.strip()]:
             if s not in skills:
-                problems.append(f"agents/{name}: skills entry '{s}' has no skills/{s}/SKILL.md")
+                PROBLEMS.append(f"agents/{name}: skills entry '{s}' has no skills/{s}/SKILL.md")
     for name, p in list(commands.items()) + list(agents.items()):
         t = read(p)
         for g in re.findall(r"[Ll]aunch[a-z]* (?:the )?`([a-z-]+)`(?: agent)?", t):
             if g not in agents:
-                problems.append(f"{rel(p)}: launches '{g}', which has no agents/{g}.md")
+                PROBLEMS.append(f"{rel(p)}: launches '{g}', which has no agents/{g}.md")
         for c in re.findall(r"`?/forge:([a-z-]+)", t):
             if c not in commands:
-                problems.append(f"{rel(p)}: mentions /forge:{c}, which has no commands/{c}.md")
+                PROBLEMS.append(f"{rel(p)}: mentions /forge:{c}, which has no commands/{c}.md")
         for tp in re.findall(r"`(templates/[^`\s*]+)`", t):
             if not os.path.exists(os.path.join(plugin, tp)):
-                problems.append(f"{rel(p)}: names {tp}, which does not exist")
+                PROBLEMS.append(f"{rel(p)}: names {tp}, which does not exist")
     for name, p in skills.items():
         for ref in re.findall(r"`(references/[^`\s]+)`", read(p)):
             if not os.path.exists(os.path.join(os.path.dirname(p), ref)):
-                problems.append(f"skills/{name}: names {ref}, which does not exist")
+                PROBLEMS.append(f"skills/{name}: names {ref}, which does not exist")
     # independence: a skill may require nothing; only commands orchestrate commands and agents
     for name, p in skills.items():
         tx = read(p)
         # naming a command as a pointer is fine; requiring another skill is not
         for other in skills:
             if other != name and re.search(r"`" + re.escape(other) + r"` skill", tx):
-                problems.append(f"skills/{name}: depends on skill '{other}'; skills must stand alone")
+                PROBLEMS.append(f"skills/{name}: depends on skill '{other}'; skills must stand alone")
     for name, p in agents.items():
         m = re.search(r"^skills: \[(.*)\]$", read(p), re.M)
         if len([x for x in (m.group(1).split(",") if m else []) if x.strip()]) > 4:
-            problems.append(f"agents/{name}: preloads more than 4 skills")
+            PROBLEMS.append(f"agents/{name}: preloads more than 4 skills")
+    # naming: snake_case file names; camelCase functions; SCREAMING_SNAKE module-level variables
+    for p in glob.glob(os.path.join(root, "**", "*"), recursive=True):
+        if not os.path.isfile(p) or ".git" + os.sep in p or "__pycache__" in p or "node_modules" in p:
+            continue
+        base = os.path.basename(p)
+        if base.endswith((".py", ".sh")) and not re.match(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*\.(py|sh)$", base):
+            PROBLEMS.append(f"naming: file {os.path.relpath(p, root)} must be snake_case")
+        if base.endswith(".py"):
+            src = read(p)
+            for fn in re.findall(r"^\s*def ([A-Za-z_][A-Za-z0-9_]*)", src, re.M):
+                if not fn.startswith(("test_", "__")) and "_" in fn.strip("_"):
+                    PROBLEMS.append(f"naming: {os.path.relpath(p, root)}: function {fn} must be camelCase")
+            for v in re.findall(r"^([a-z_][A-Za-z0-9_]*) = ", src, re.M):
+                PROBLEMS.append(f"naming: {os.path.relpath(p, root)}: module-level variable {v} must be SCREAMING_SNAKE_CASE")
     # placeholders
     tr = os.path.join(plugin, "templates", "README.md")
     docs = read(tr) if os.path.exists(tr) else ""
@@ -105,16 +119,16 @@ def checkAll(tokens=False, plugin=PLUGIN, root=ROOT):
             ph |= set(re.findall(r"\{\{([A-Z_]+)\}\}", read(p)))
     for x in sorted(ph):
         if "{{" + x + "}}" not in docs:
-            problems.append(f"templates: placeholder {{{{{x}}}}} is not in templates/README.md")
+            PROBLEMS.append(f"templates: placeholder {{{{{x}}}}} is not in templates/README.md")
     # kit.json registry
     try:
         reg = json.loads(read(os.path.join(root, "kit.json")))["units"]
         disk = {"skills": set(skills), "agents": set(agents), "commands": set(commands)}
         for k in disk:
             for n in sorted(disk[k] - set(reg.get(k, {}))):
-                problems.append(f"kit.json: {k}/{n} exists on disk but is not registered (orphan)")
+                PROBLEMS.append(f"kit.json: {k}/{n} exists on disk but is not registered (orphan)")
             for n in sorted(set(reg.get(k, {})) - disk[k]):
-                problems.append(f"kit.json: {k}/{n} is registered but missing on disk")
+                PROBLEMS.append(f"kit.json: {k}/{n} is registered but missing on disk")
     except (OSError, KeyError, ValueError):
         pass
     # secrets / personal paths
@@ -129,7 +143,7 @@ def checkAll(tokens=False, plugin=PLUGIN, root=ROOT):
                 continue
             for pat, label in bad:
                 if re.search(pat, t):
-                    problems.append(f"{rel(p)}: contains a {label}")
+                    PROBLEMS.append(f"{rel(p)}: contains a {label}")
     # budgets
     if tokens:
         kit = json.loads(read(os.path.join(root, "kit.json")))
@@ -142,15 +156,15 @@ def checkAll(tokens=False, plugin=PLUGIN, root=ROOT):
         for name, p in skills.items():
             n = os.path.getsize(p)
             if n > lim(f"skills/{name}/SKILL.md", b.get("skill_bytes", 2500)):
-                problems.append(f"budget: skills/{name}/SKILL.md is {n} bytes")
+                PROBLEMS.append(f"budget: skills/{name}/SKILL.md is {n} bytes")
         for name, p in agents.items():
             n = os.path.getsize(p)
             if n > lim(f"agents/{name}.md", b.get("agent_bytes", 3000)):
-                problems.append(f"budget: agents/{name}.md is {n} bytes")
+                PROBLEMS.append(f"budget: agents/{name}.md is {n} bytes")
         for name, p in commands.items():
             n = os.path.getsize(p)
             if n > lim(f"commands/{name}.md", b.get("command_bytes", 3500)):
-                problems.append(f"budget: commands/{name}.md is {n} bytes")
+                PROBLEMS.append(f"budget: commands/{name}.md is {n} bytes")
         for name, p in agents.items():
             t = read(p)
             m = re.search(r"^skills: \[(.*)\]$", t, re.M)
@@ -159,7 +173,7 @@ def checkAll(tokens=False, plugin=PLUGIN, root=ROOT):
                 if s in skills:
                     total += os.path.getsize(skills[s])
             info[name] = total // 4
-    return list(problems), info
+    return list(PROBLEMS), info
 
 
 if __name__ == "__main__":

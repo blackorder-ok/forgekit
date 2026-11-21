@@ -19,12 +19,12 @@ PATH_PATTERNS = [
 ]
 
 
-def scan(text, extra_words=()):
+def scan(text, extraWords=()):
     hits = []
     for pat, label in SECRET_PATTERNS + PATH_PATTERNS:
         for m in re.finditer(pat, text):
             hits.append((label, m.group(0)[:6] + "…"))
-    for w in extra_words:
+    for w in extraWords:
         if w and w.lower() in text.lower():
             hits.append(("ignore-list word", w))
     return hits
