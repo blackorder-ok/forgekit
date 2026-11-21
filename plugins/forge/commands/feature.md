@@ -6,15 +6,15 @@ argument-hint: <feature name matching docs/design/<feature>.md>
 Feature: $ARGUMENTS
 
 ## Preconditions
-- Run `/forge:doctor` first. `NOT READY` stops the run.
+- Check the tools inline, in one Bash call, without invoking `/forge:doctor` (a nested command's report can end your turn): `docker info`, `docker compose version`, `git --version`, `python --version` (3.11.x). Do not touch `secrets/`: the project denies reads there, and a missing secrets file shows up in the gate. Any failure stops the run. Success is not a result to report: go on to step 1 in the same turn.
 - Run `git branch --show-current`. It must be `develop` or `feature/<name>`. Otherwise stop and report the branch. Never run on `qa`, `release`, or `master`.
 - If the current branch is `develop`, create `feature/$ARGUMENTS` from it before any change, and switch to it.
 - `docs/design/$ARGUMENTS.md` must exist and its first line must be `status: approved`. If not, stop and run `/forge:design` first.
 
 ## Steps
-Run in order. Stop at the first failure and report it.
+Run in order without pausing. Launch every agent in the foreground, one at a time, and wait for its result (never in the background, never two copies): a headless run ends while background agents are still working. Stop only at a failure; otherwise finish all 8 steps, then summarise.
 
-1. **Baseline gate.** Launch `ops` with `/forge:check develop`. Require `GREEN`. If `RED`, stop. Do not start a feature on a broken base.
+1. **Baseline gate.** Skip it when `git ls-files backend` is empty (F01 creates it; step 7 is its gate). Otherwise launch `ops` with `/forge:check develop`. Require `GREEN`; if `RED`, stop (never build on a broken base).
 2. **Red.** Launch `tester` with the feature. Require failing tests with missing-behaviour errors, each marked with its level from `test-levels`.
 3. **Green.** Launch `developer` (backend files, and the `frontend/` files if the design names any). Require `pytest -q`, `ruff check`, and `mypy` to pass, and for frontend, `npm test` and `npm run typecheck`.
 4. **Review.** Launch `reviewer`. Send blockers and majors back to the same agent, then repeat step 3. Maximum two review rounds, then stop and report.
@@ -29,7 +29,6 @@ Run in order. Stop at the first failure and report it.
 End with a summary: branch, files changed, test count per level, review verdict, security verdict, eval verdict (or "not applicable"), devops verdict, and docs changed. Do not merge. Merging a feature into `develop` is a pull request, which the user opens.
 
 ## On failure
-- Baseline gate `RED`: stop. Do not start a feature on a broken base.
 - Tester produces tests that fail for the wrong reason (import, syntax): fix the test file once. If it still fails, stop and report.
 - Review still has blockers or majors after two rounds: stop and report both rounds.
 - Security `FAIL`: stop. Report the findings. Do not fix and re-run without the user's go-ahead.

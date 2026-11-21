@@ -5,7 +5,7 @@
   "budgets": {
     "skill_bytes": 2500,
     "agent_bytes": 3000,
-    "command_bytes": 3500,
+    "command_bytes": 3800,
     "overrides": {
       "commands/scaffold-project.md": {
         "bytes": 7000,

@@ -273,6 +273,14 @@ class NamingTests(unittest.TestCase):
 
 
 class CommandRegressionTests(unittest.TestCase):
+    def test_config_tests_never_read_secrets_and_nginx_404s_without_frontend(self):
+        base = os.path.join(ROOT, "plugins", "forge")
+        self.assertIn("never read `secrets/*`", open(os.path.join(base, "skills", "test-levels", "SKILL.md"), encoding="utf-8").read())
+        self.assertIn("=404", open(os.path.join(base, "templates", "docker", "nginx.conf"), encoding="utf-8").read())
+
+    def test_baseline_gate_skip_uses_git_ls_files(self):
+        self.assertIn("git ls-files backend", self.read("feature.md"))
+
     def read(self, name):
         return open(os.path.join(ROOT, "plugins", "forge", "commands", name), encoding="utf-8").read()
 
@@ -283,7 +291,8 @@ class CommandRegressionTests(unittest.TestCase):
         self.assertIn("test -f secrets/", t)
 
     def test_feature_runs_tool_doctor_and_fix_runs_stack_doctor(self):
-        self.assertIn("`/forge:doctor` first", self.read("feature.md"))
+        self.assertNotIn("Run `/forge:doctor`", self.read("feature.md"))
+        self.assertIn("docker compose version", self.read("feature.md"))
         self.assertIn("/forge:doctor stack", self.read("fix.md"))
 
     def test_design_file_is_named_by_id_only(self):
