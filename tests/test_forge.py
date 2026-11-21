@@ -273,6 +273,14 @@ class NamingTests(unittest.TestCase):
 
 
 class CommandRegressionTests(unittest.TestCase):
+    def test_ci_frontend_job_survives_a_missing_frontend_dir(self):
+        ci = open(os.path.join(ROOT, "plugins", "forge", "templates", "ci", "ci.yml"), encoding="utf-8").read()
+        job = ci[ci.index("  frontend:"):ci.index("  develop:")]
+        self.assertNotIn("defaults:", job)
+        self.assertIn("frontend/package.json", job)
+        dep = open(os.path.join(ROOT, "plugins", "forge", "skills", "dependency-policy", "SKILL.md"), encoding="utf-8").read()
+        self.assertIn("ruff, mypy, bandit, pip-audit", dep)
+
     def test_secret_deny_rule_still_lets_reviewers_read_examples(self):
         s = open(os.path.join(ROOT, "plugins", "forge", "templates", "project", "settings.json"), encoding="utf-8").read()
         self.assertIn("secrets/*-secrets.properties)", s)

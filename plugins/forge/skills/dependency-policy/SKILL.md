@@ -7,7 +7,7 @@ pack: core
 # Dependency policy
 
 ## Pinning
-Direct dependencies in `backend/requirements.in` and `requirements-dev.in`. Compiled `.txt` files pin everything with hashes (`pip-compile --generate-hashes` or `uv pip compile`). Commit both. Install only with `--require-hashes`. Python 3.11. Docker base images pinned by tag, by digest once live.
+Direct dependencies in `backend/requirements.in` and `requirements-dev.in`. Compiled `.txt` files pin everything with hashes (`pip-compile --generate-hashes` or `uv pip compile`). Commit both. `requirements-dev.in` must list every tool CI runs: pytest, pytest-cov, ruff, mypy, bandit, pip-audit. Install only with `--require-hashes`. Python 3.11. Docker base images pinned by tag, by digest once live.
 
 ## Adding
 Record in the PR: why stdlib or an existing dependency is not enough; licence (MIT, BSD, Apache-2.0, PSF, ISC allowed, others need a person); maintenance (release within 12 months, no open advisory); transitive footprint (`pipdeptree`).

@@ -34,18 +34,12 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            frontend
       - name: Check for a frontend
         id: detect
         run: |
-          if [ -f package.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+          if [ -f frontend/package.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-node@v4
         if: steps.detect.outputs.present == 'true'
         with:
@@ -53,14 +47,19 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - if: steps.detect.outputs.present == 'true'
+        working-directory: frontend
         run: npm ci
       - if: steps.detect.outputs.present == 'true'
+        working-directory: frontend
         run: npm run typecheck
       - if: steps.detect.outputs.present == 'true'
+        working-directory: frontend
         run: npm test
       - if: steps.detect.outputs.present == 'true'
+        working-directory: frontend
         run: npm run build
       - if: steps.detect.outputs.present == 'true'
+        working-directory: frontend
         run: test -z "$(grep -rl '\.innerHTML\s*=' src || true)"
 
   develop:

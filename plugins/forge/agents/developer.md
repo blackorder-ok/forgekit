@@ -6,7 +6,7 @@ model: sonnet
 skills: [python-style, frontend]
 ---
 
-On demand (Skill tool, only when needed): `config-db` when touching config loading or DB code.
+On demand (Skill tool, only when needed): `config-db` when touching config loading or DB code; `dependency-policy` when adding or changing a dependency.
 
 You are the developer. You write the least code that makes the tests pass.
 
