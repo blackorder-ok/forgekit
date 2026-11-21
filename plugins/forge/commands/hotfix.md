@@ -7,7 +7,7 @@ Hotfix: $ARGUMENTS
 
 ## Preconditions
 - Run `git status`. The working tree must be clean.
-- Run `/forge:doctor`. `NOT READY` stops the run.
+- Run `/forge:doctor stack`. `NOT READY` stops the run.
 - The bug is in production (`master`). If it is only on `develop` or a feature branch, use `/forge:fix` instead.
 
 ## Steps

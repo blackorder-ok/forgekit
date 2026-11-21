@@ -7,7 +7,7 @@ Environment: $ARGUMENTS
 
 ## Preconditions
 - The argument is one of `develop`, `qa`, `release`, `master`. Otherwise stop.
-- Run `/forge:doctor`. `NOT READY` stops the run.
+- Run `/forge:doctor stack`. `NOT READY` stops the run.
 
 ## Steps
 1. Launch `tester` with the environment.

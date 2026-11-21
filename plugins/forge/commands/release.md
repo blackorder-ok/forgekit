@@ -9,7 +9,7 @@ Request: $ARGUMENTS
 Stop if the version is not `X.Y.Z`.
 
 Preconditions (all must hold, or stop before any change):
-- `/forge:doctor` is `READY`.
+- `/forge:doctor stack` is `READY`.
 - The working tree is clean, and `master` matches `origin/master`.
 - The tag `vX.Y.Z` does not exist, locally or on the remote.
 - `CHANGELOG.md` has entries under `## [Unreleased]`.

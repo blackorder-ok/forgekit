@@ -272,5 +272,26 @@ class NamingTests(unittest.TestCase):
         self.assertIn("variable my_var must be SCREAMING_SNAKE_CASE", joined)
 
 
+class CommandRegressionTests(unittest.TestCase):
+    def read(self, name):
+        return open(os.path.join(ROOT, "plugins", "forge", "commands", name), encoding="utf-8").read()
+
+    def test_doctor_does_not_curl_the_internal_emulator_port(self):
+        t = self.read("doctor.md")
+        self.assertNotIn("curl -s -o /dev/null", t)
+        self.assertIn("{{.Health}}", t)
+        self.assertIn("test -f secrets/", t)
+
+    def test_feature_runs_tool_doctor_and_fix_runs_stack_doctor(self):
+        self.assertIn("`/forge:doctor` first", self.read("feature.md"))
+        self.assertIn("/forge:doctor stack", self.read("fix.md"))
+
+    def test_design_file_is_named_by_id_only(self):
+        self.assertIn("docs/design/<id>.md", self.read("design.md"))
+
+    def test_adopt_project_does_not_call_doctor(self):
+        self.assertNotIn("Run `/forge:doctor`", self.read("adopt-project.md"))
+
+
 if __name__ == "__main__":
     unittest.main()

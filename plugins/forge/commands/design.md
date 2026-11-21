@@ -14,7 +14,7 @@ Feature: $ARGUMENTS
    - `environments`: all four.
    - `touches` and `tests`: provisional. The architect confirms them in step 4.
    Validate the list after the edit: ids are unique, every `depends_on` refers to an earlier id, and no cycle exists. If validation fails, undo the edit and report.
-4. Launch the `architect` agent with the feature and the plan. It writes `docs/design/<feature>.md`, naming the branch and the environments affected. If its design changes `depends_on`, `touches`, or `tests`, it updates that entry in `docs/plan.md` too, and validation runs again.
+4. Launch the `architect` agent with the feature and the plan. It writes `docs/design/<id>.md` (the feature id only, for example `F01.md`; never add the feature name), naming the branch and the environments affected. If its design changes `depends_on`, `touches`, or `tests`, it updates that entry in `docs/plan.md` too, and validation runs again.
 5. Show the user the design's modules section, the open questions, and the plan entry as changed.
 6. Stop. Do not start any implementation. The user approves by changing the first line of the design doc to `status: approved`.
 

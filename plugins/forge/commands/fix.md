@@ -8,7 +8,7 @@ Bug: $ARGUMENTS
 ## Preconditions
 - Run `git branch --show-current`. It must be `develop` or `feature/<name>`. For a production bug use `/forge:hotfix`. Otherwise stop and report the branch.
 - Run `git status`. The working tree must be clean. If not, stop and ask the user to commit or stash.
-- Run `/forge:doctor`. `NOT READY` stops the run.
+- Run `/forge:doctor stack`. `NOT READY` stops the run.
 
 ## Steps
 1. **Mark the run.** Create the empty file `.claude/fix-active`. The diff_budget hook (`templates/project/hooks/diff_budget.sh`) reads it, and the file is removed at the end.
