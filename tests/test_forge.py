@@ -273,6 +273,10 @@ class NamingTests(unittest.TestCase):
 
 
 class CommandRegressionTests(unittest.TestCase):
+    def test_ci_grants_pull_requests_read_for_gitleaks(self):
+        ci = open(os.path.join(ROOT, "plugins", "forge", "templates", "ci", "ci.yml"), encoding="utf-8").read()
+        self.assertIn("pull-requests: read", ci.split("jobs:")[0])
+
     def test_ci_frontend_job_survives_a_missing_frontend_dir(self):
         ci = open(os.path.join(ROOT, "plugins", "forge", "templates", "ci", "ci.yml"), encoding="utf-8").read()
         job = ci[ci.index("  frontend:"):ci.index("  develop:")]
