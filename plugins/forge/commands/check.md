@@ -7,7 +7,7 @@ Environment: $ARGUMENTS
 
 If no environment was given, use the environment of the current branch (`develop` or `feature/*` → `develop`). Stop if the environment is not one of `develop`, `qa`, `release`, `master`.
 
-Launch the `ops` agent with the check sequence for this environment only. It uses `docker/compose.<env>.yml` and `config/application-<env>.properties`. Return its per-check PASS/FAIL report and the overall `GREEN` or `RED` verdict.
+Launch the `ops` agent in the foreground (never in the background) with the check sequence for this environment only. It uses `docker/compose.<env>.yml` and `config/application-<env>.properties`. Return its per-check PASS/FAIL report and the overall `GREEN` or `RED` verdict.
 
 If `RED`, include the failing output and the most likely cause. Do not change application code.
 

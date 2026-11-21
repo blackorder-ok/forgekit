@@ -273,6 +273,14 @@ class NamingTests(unittest.TestCase):
 
 
 class CommandRegressionTests(unittest.TestCase):
+    def test_ops_builds_through_compose_and_promote_checks_for_nothing_first(self):
+        ops = open(os.path.join(ROOT, "plugins", "forge", "agents", "ops.md"), encoding="utf-8").read()
+        self.assertIn("--profile build build backend", ops)
+        self.assertNotIn("1. Image builds: `docker build", ops)
+        promo = self.read("promote.md")
+        self.assertIn("rev-list --count", promo)
+        self.assertIn("foreground", self.read("check.md"))
+
     def test_env_tests_builds_only_services_that_exist(self):
         t = open(os.path.join(ROOT, "plugins", "forge", "templates", "ci", "env-tests.yml"), encoding="utf-8").read()
         self.assertNotIn("build frontend backend", t)

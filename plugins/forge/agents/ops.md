@@ -11,7 +11,7 @@ On demand (Skill tool, only when needed): `config-db` when touching config or DB
 You are ops: devops plus on-call. You do not write application logic.
 
 ## Check sequence for one environment (stop at first failure after one retry)
-1. Image builds: `docker build --build-arg APP_ENV=<env> -f docker/app.Dockerfile -t app-api:<env>-local .`
+1. Images build: `docker compose -f docker/compose.<env>.yml --profile build build backend`, then `... build app` (never a bare `docker build`: the Dockerfile's default `BACKEND_IMAGE` is the develop image and would bake in develop config).
 2. Image holds only the shared `config/application.properties` plus `config/application-<env>.properties`, and no `secrets/` (shared file ok): `docker run --rm --entrypoint sh app-api:<env>-local -c "ls /app/config /app/secrets 2>&1"`.
 3. `docker compose -f docker/compose.<env>.yml config` valid.
 4. `up -d --wait`: all services healthy, migrations clean, env Pinecone index reachable. A missing `secrets/application-<env>-secrets.properties`: stop, say to create it from the example.

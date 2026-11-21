@@ -7,8 +7,9 @@ Promotion: $ARGUMENTS
 
 Allowed pairs only: `develop qa`, `qa release`, `release master`. Anything else: stop and report.
 
+0. Run `git rev-list --count <to>..<from>` first. Zero means nothing to promote: report that and stop before any check.
 1. Run `git status`. The working tree must be clean and the local branch must match the remote. Otherwise stop.
-2. Run `/forge:check <from>`. Require `GREEN`. Stop on `RED`.
+2. Run `/forge:check <from>` (its agents run in the foreground). Require `GREEN`. Stop on `RED`.
 3. Open a pull request with `gh pr create --base <to> --head <from>`. Title: `promote: <from> → <to>`. The body lists the commits being promoted and the `/forge:check` result.
 4. Report the pull request link.
 
