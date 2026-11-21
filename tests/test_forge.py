@@ -273,6 +273,11 @@ class NamingTests(unittest.TestCase):
 
 
 class CommandRegressionTests(unittest.TestCase):
+    def test_secret_deny_rule_still_lets_reviewers_read_examples(self):
+        s = open(os.path.join(ROOT, "plugins", "forge", "templates", "project", "settings.json"), encoding="utf-8").read()
+        self.assertIn("secrets/*-secrets.properties)", s)
+        self.assertNotIn("secrets/**", s)
+
     def test_uvicorn_target_follows_naming_rule(self):
         sup = open(os.path.join(ROOT, "plugins", "forge", "templates", "docker", "supervisord.conf"), encoding="utf-8").read()
         self.assertIn("app.main:APP", sup)

@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "deny": ["Read(./secrets/**)", "Bash(git push --force*)", "Bash(git push -f*)"]
+    "deny": ["Read(./secrets/*-secrets.properties)", "Bash(git push --force*)", "Bash(git push -f*)"]
   },
   "hooks": {
     "PreToolUse": [
