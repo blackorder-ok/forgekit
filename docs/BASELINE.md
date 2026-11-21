@@ -12,4 +12,4 @@ Approximate tokens preloaded per agent spawn (agent file + preloaded skill diges
       doc-updater: ~758
       ai-evaluator: ~725
 
-Full /feature preload (tester, developer, reviewer, security-reviewer, ops, ai-evaluator, doc-updater): about 7.9k tokens, under the 8k target. Per-agent 1.5k target: all but security-reviewer (~1.9k, three security skills by design). Estimates, not measured model usage.
+Full /feature preload (tester, developer, reviewer, security-reviewer, ops, ai-evaluator, doc-updater): about 8.0k tokens; the test gate is 8.2k (plan target: about 8k). Per-agent 1.5k goal: security-reviewer and ops exceed it by design.

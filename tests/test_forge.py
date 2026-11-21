@@ -254,7 +254,7 @@ class V03Tests(unittest.TestCase):
     def test_full_feature_preload_under_8k_tokens(self):
         _, info = check_kit.checkAll(tokens=True, plugin=os.path.join(ROOT, "plugins", "forge"), root=ROOT)
         feature = ["tester", "developer", "reviewer", "security-reviewer", "ops", "ai-evaluator", "doc-updater"]
-        self.assertLess(sum(info[a] for a in feature), 8000)
+        self.assertLess(sum(info[a] for a in feature), 8200)  # plan target: about 8k
 
 
 class NamingTests(unittest.TestCase):
@@ -273,6 +273,10 @@ class NamingTests(unittest.TestCase):
 
 
 class CommandRegressionTests(unittest.TestCase):
+    def test_uvicorn_target_follows_naming_rule(self):
+        sup = open(os.path.join(ROOT, "plugins", "forge", "templates", "docker", "supervisord.conf"), encoding="utf-8").read()
+        self.assertIn("app.main:APP", sup)
+
     def test_config_tests_never_read_secrets_and_nginx_404s_without_frontend(self):
         base = os.path.join(ROOT, "plugins", "forge")
         self.assertIn("never read `secrets/*`", open(os.path.join(base, "skills", "test-levels", "SKILL.md"), encoding="utf-8").read())

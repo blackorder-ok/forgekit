@@ -7,7 +7,7 @@ pack: stack
 # Python style (Python 3.11)
 
 ## Naming
-File names `snake_case` (every file, scripts and hooks too) · functions, methods, variables `camelCase` · classes, interfaces, enums, type aliases `PascalCase` · constants and module-level (global) variables `SCREAMING_SNAKE_CASE` · tests `test_<unit>_<behaviour>`.
+File names `snake_case` (every file, scripts and hooks too) · functions, methods, variables `camelCase` · classes, interfaces, enums, type aliases `PascalCase` · constants and module-level (global) variables `SCREAMING_SNAKE_CASE` · tests `test_<unit>_<behaviour>`. FastAPI instance `APP`, routers `ROUTER`. Exempt: `pytestmark`, Alembic revision names.
 
 ## Logging
 Top of every module `LOGGER = LoggingHandler().getLogs()`. Messages start with a tag: `[LLM] ...`, `[UTILS][CONFIG] ...`. Log lengths and ids, never prompts, bodies or secrets.

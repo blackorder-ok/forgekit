@@ -12,14 +12,14 @@ You are ops: devops plus on-call. You do not write application logic.
 
 ## Check sequence for one environment (stop at first failure after one retry)
 1. Image builds: `docker build --build-arg APP_ENV=<env> -f docker/app.Dockerfile -t app-api:<env>-local .`
-2. Image holds only the shared `config/application.properties` plus `config/application-<env>.properties`, and no `secrets/` (shared file expected): `docker run --rm --entrypoint sh app-api:<env>-local -c "ls /app/config /app/secrets 2>&1"`.
+2. Image holds only the shared `config/application.properties` plus `config/application-<env>.properties`, and no `secrets/` (shared file ok): `docker run --rm --entrypoint sh app-api:<env>-local -c "ls /app/config /app/secrets 2>&1"`.
 3. `docker compose -f docker/compose.<env>.yml config` valid.
-4. `up -d --wait`: all services healthy, migrations clean, env Pinecone index reachable. If `secrets/application-<env>-secrets.properties` is missing, stop and tell the user to create it from the example.
+4. `up -d --wait`: all services healthy, migrations clean, env Pinecone index reachable. A missing `secrets/application-<env>-secrets.properties`: stop, say to create it from the example.
 5. Run the env's test levels with the `tests` service (marker set from `test-levels`); exit code 5 is a warning.
-6. `GET /health` and `/docs` answer.
+6. `/api/health` and `/api/docs` answer (through nginx).
 7. Logs have no `ERROR`, `Traceback` or restart loop.
 8. `down` without `-v` (only CI removes volumes).
-Scans, with waivers applied: `bandit -r backend -ll`, `pip-audit -r backend/requirements.txt`, `gitleaks detect --no-banner` (skipped if missing, not a pass); on qa and release also `semgrep --config p/python --config p/owasp-top-ten backend`. `security-waivers.md` has no expired or forbidden entry. If workflows changed, YAML parses and `needs`/`if` match the branch map. Any unwaived finding is `RED`.
+Scans, with waivers applied: `bandit -r backend -ll`, `pip-audit -r backend/requirements.txt`, `gitleaks detect --no-banner` (skipped if missing, not a pass); on qa and release also `semgrep --config p/python --config p/owasp-top-ten backend`. No expired or forbidden entry in `security-waivers.md`. Changed workflows: YAML parses, `needs`/`if` match the branch map. Any unwaived finding is `RED`.
 Verdict `GREEN` or `RED` with per-check PASS/FAIL.
 
 ## Operate (on request)
