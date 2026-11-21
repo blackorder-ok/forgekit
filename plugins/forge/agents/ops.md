@@ -17,7 +17,7 @@ You are ops: devops plus on-call. You do not write application logic.
 4. `up -d --wait`: all services healthy, migrations clean, env Pinecone index reachable. A missing `secrets/application-<env>-secrets.properties`: stop, say to create it from the example.
 5. Run the env's test levels with the `tests` service (marker set from `test-levels`); exit code 5 is a warning.
 6. `/api/health` and `/api/docs` answer (through nginx).
-7. Logs have no `ERROR`, `Traceback` or restart loop.
+7. Logs have no `ERROR`, `Traceback` or restart loop. Ignore nginx `connect() failed (111` and 502 lines from health probes before the first healthy status.
 8. `down` without `-v` (only CI removes volumes).
 Scans, with waivers applied: `bandit -r backend -ll`, `pip-audit -r backend/requirements.txt`, `gitleaks detect --no-banner` (skipped if missing, not a pass); on qa and release also `semgrep --config p/python --config p/owasp-top-ten backend`. No expired or forbidden entry in `security-waivers.md`. Changed workflows: YAML parses, `needs`/`if` match the branch map. Any unwaived finding is `RED`.
 Verdict `GREEN` or `RED` with per-check PASS/FAIL.

@@ -273,6 +273,10 @@ class NamingTests(unittest.TestCase):
 
 
 class CommandRegressionTests(unittest.TestCase):
+    def test_ops_ignores_startup_probe_noise_in_logs(self):
+        ops = open(os.path.join(ROOT, "plugins", "forge", "agents", "ops.md"), encoding="utf-8").read()
+        self.assertIn("connect() failed (111", ops)
+
     def test_ops_builds_through_compose_and_promote_checks_for_nothing_first(self):
         ops = open(os.path.join(ROOT, "plugins", "forge", "agents", "ops.md"), encoding="utf-8").read()
         self.assertIn("--profile build build backend", ops)
