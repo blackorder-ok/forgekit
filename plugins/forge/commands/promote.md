@@ -17,7 +17,7 @@ Allowed pairs only: `develop qa`, `qa release`, `release master`. Anything else:
 Rules:
 - Never push directly to `qa`, `release`, or `master`.
 - Never merge. The user merges after approval. `master` also needs the environment reviewer.
-- Do not promote if `<to>` has commits that are not on `<from>`. Report them and stop.
+- Do not promote if `<to>` has commits that are not on `<from>`, ignoring merge commits (`git rev-list --count --no-merges <from>..<to>`; promotion PR merges are expected). Report real ones and stop.
 
 ## On failure
 - `gh` not installed or not logged in: print the exact commands to run by hand, then stop. Do not guess credentials.
