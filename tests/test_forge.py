@@ -273,6 +273,9 @@ class NamingTests(unittest.TestCase):
 
 
 class CommandRegressionTests(unittest.TestCase):
+    def test_promote_does_not_block_on_locally_missing_scanner(self):
+        self.assertIn("skipped only because its tool is not installed", self.read("promote.md"))
+
     def test_ops_ignores_startup_probe_noise_in_logs(self):
         ops = open(os.path.join(ROOT, "plugins", "forge", "agents", "ops.md"), encoding="utf-8").read()
         self.assertIn("connect() failed (111", ops)
