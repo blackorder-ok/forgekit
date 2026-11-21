@@ -8,7 +8,7 @@ Project: $ARGUMENTS
 ## Preconditions
 - The path is a git repository with a clean working tree. If not, stop and report it.
 - Run `git branch --show-current`. Work on a new branch `kit/adopt` cut from the current branch. Never edit the current branch directly.
-- Run `/forge:doctor` for the tools the adoption needs. `NOT READY` stops the run.
+- Check only the tools: `git --version`, `python --version` (3.11.x). Do not run `/forge:doctor`: its environment checks assume a kit-scaffolded stack and would start containers in a repo that has none. Missing tool stops the run.
 
 ## Steps
 

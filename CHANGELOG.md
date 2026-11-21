@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0] - 2026-11-21
+### Added
+- MIT `LICENSE`, plugin icon, `license` in plugin.json; install line in the plugin README. `claude plugin validate --profile directory` passes clean.
+### Fixed
+- `/forge:adopt-project` no longer runs `/forge:doctor` (its checks assume a kit-scaffolded stack and started containers in a plain repo); it checks only git and Python.
+### Tested
+- Isolated marketplace install; headless runs of `route`, `scaffold-project`, `adopt-project`, `kit-review`, `learn-style`, `converge`; live `branch_guard` block on `qa`. See PROGRESS.md.
+
 ## [0.3.1] - 2026-11-21
 ### Changed
 - Naming rules enforced: snake_case file names (hooks renamed to `branch_guard.sh`, `diff_budget.sh`, `test_guard.py`), camelCase functions and variables, PascalCase classes, SCREAMING_SNAKE_CASE constants and globals. `check_kit` lints them; `python-style` states them.

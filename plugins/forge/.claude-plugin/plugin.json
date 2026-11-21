@@ -1,6 +1,6 @@
 {
   "name": "forge",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "forgekit: plan, scaffold, build, review and ship production-grade Python/FastAPI apps in your own style, with token-lean agents, skills and commands.",
   "author": {
     "name": "Omkar"
@@ -11,5 +11,6 @@
     "agents",
     "workflow",
     "production"
-  ]
+  ],
+  "license": "MIT"
 }
