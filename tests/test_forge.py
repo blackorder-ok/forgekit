@@ -273,6 +273,11 @@ class NamingTests(unittest.TestCase):
 
 
 class CommandRegressionTests(unittest.TestCase):
+    def test_env_tests_builds_only_services_that_exist(self):
+        t = open(os.path.join(ROOT, "plugins", "forge", "templates", "ci", "env-tests.yml"), encoding="utf-8").read()
+        self.assertNotIn("build frontend backend", t)
+        self.assertIn("config --services", t)
+
     def test_ci_grants_pull_requests_read_for_gitleaks(self):
         ci = open(os.path.join(ROOT, "plugins", "forge", "templates", "ci", "ci.yml"), encoding="utf-8").read()
         self.assertIn("pull-requests: read", ci.split("jobs:")[0])

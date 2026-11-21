@@ -23,10 +23,11 @@ jobs:
       - name: Write secrets file
         run: printf '%s\n' "$CP_SECRETS" > "secrets/application-$ENV_NAME-secrets.properties"
 
-      - name: Build images for this environment (frontend and backend first, then app)
+      - name: Build images for this environment (frontend if present, backend, then app)
         run: |
-          docker compose -f docker/compose.$ENV_NAME.yml --profile build build frontend backend
-          docker compose -f docker/compose.$ENV_NAME.yml build app
+          c="docker compose -f docker/compose.$ENV_NAME.yml"
+          $c --profile build build $($c --profile build config --services | grep -E '^(frontend|backend)$')
+          $c build app
 
       - name: Start stack
         run: docker compose -f docker/compose.$ENV_NAME.yml up -d --wait
