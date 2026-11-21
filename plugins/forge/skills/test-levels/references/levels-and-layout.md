@@ -47,7 +47,7 @@ testpaths = tests
 pythonpath = backend .
 markers =
     unit: pure logic with fakes for DB, AWS, and LLM
-    config: each config/<env>/credentials.properties loads, missing keys fail
+    config: each config/application-<env>.properties and secrets/application-<env>-secrets.properties loads, missing keys fail
     integration: MySQL, the AWS emulator, and the Pinecone index
     contract: OpenAPI and model output match snapshots
     security: auth, input validation, prompt injection
