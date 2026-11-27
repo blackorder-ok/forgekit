@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 sys.path.insert(0, HOOKS)
 
 import kit_mem  # noqa: E402
+import kit_log  # noqa: E402
 import kit_new  # noqa: E402
 import kit_claim  # noqa: E402
 import kit_status  # noqa: E402
@@ -178,13 +179,14 @@ class HookTests(TmpCase):
         return d
 
     def test_branch_guard(self):
-        env = dict(os.environ, HOME=self.tmp, PATH=os.environ.get("PATH", ""))
+        env = dict(os.environ, HOME=self.tmp, FORGE_HOME=os.path.join(self.tmp, ".kit"), CLAUDE_PLUGIN_ROOT=os.path.join(ROOT, "plugins", "forge"), PATH=os.environ.get("PATH", ""))
         for branch, code in (("master", 2), ("qa", 2), ("develop", 0)):
             d = self._git(branch)
             r = subprocess.run([BASH, os.path.join(HOOKS, "branch_guard.sh")], cwd=d, env=env, capture_output=True)
             self.assertEqual(r.returncode, code, branch)
             shutil.rmtree(d, onerror=_rmRo)
-        self.assertTrue(os.path.exists(os.path.join(self.tmp, ".kit", "inbox")))
+        events = kit_log.read(path=os.path.join(self.tmp, ".kit", "events.jsonl"))
+        self.assertEqual([e["reason_code"] for e in events], ["protected_branch", "protected_branch"])  # master and qa block; develop passes
 
     def test_diff_budget(self):
         d = self._git("develop")
@@ -200,6 +202,88 @@ class HookTests(TmpCase):
         self.assertEqual(run(), 2)  # 30 lines changed > 20
         open(os.path.join(d, "a.txt"), "w").write("1\n2\n")
         self.assertEqual(run(), 0)
+
+
+class LearnLogTests(TmpCase):
+    def setUp(self):
+        super().setUp()
+        import kit_common
+        from unittest import mock
+        self._kc = kit_common.KIT_DIR
+        kit_common.KIT_DIR = self.tmp
+        self.addCleanup(setattr, kit_common, "KIT_DIR", self._kc)
+        env = mock.patch.dict(os.environ, {"KIT_LOG": "on", "KIT_LEARN": "on"})
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_fingerprint_equivalence(self):
+        fp = kit_log.fingerprint
+        self.assertEqual(fp("fix over budget 4 files 25 lines"), fp("fix over budget 7 files 61 lines"))
+        self.assertEqual(fp("edit blocked on qa", "qa"), fp("edit blocked on develop", "develop"))
+        self.assertEqual(fp("saw 'alpha' in src/a/b.py"), fp("saw 'beta' in src/c/d.py"))
+        self.assertEqual(fp("commit abc1234def"), fp("commit 9f8e7d6c5b"))
+        self.assertNotEqual(fp("edit blocked"), fp("removes asserts"))
+
+    def test_five_diff_budget_lines_are_one_group(self):
+        for n in range(5):
+            kit_log.event("gate", agent="diff_budget", detail=f"fix over budget {n + 1} files {n * 9 + 3} lines", cwd=self.tmp)
+        out = kit_mem.inbox(path=kit_log.globalPath())
+        self.assertEqual(len(out.splitlines()), 1)
+        self.assertIn("5x diff_budget", out)
+
+    def test_redaction_fixtures(self):
+        rec = kit_log.event("gate", agent="x", detail="token=abcdefghijklmnop1234 at C:\\Users\\Omkar\\p mail bob@example.com hex " + "a" * 40, cwd=self.tmp)
+        line = open(kit_log.globalPath(), encoding="utf-8").read()
+        for leak in ("abcdefghijklmnop1234", "Omkar", "bob@example.com", "a" * 40):
+            self.assertNotIn(leak, line)
+        self.assertIn("<email>", rec["detail"])
+
+    def test_command_text_never_stored(self):
+        rec = kit_log.event("gate", agent="x", command="git push --force secret-arg-value", cwd=self.tmp)
+        self.assertEqual(rec["command"], "git")
+        self.assertEqual(rec["command_class"], "vcs")
+        self.assertNotIn("secret-arg-value", open(kit_log.globalPath(), encoding="utf-8").read())
+
+    def test_rotation(self):
+        from unittest import mock
+        with mock.patch.object(kit_log, "MAX_BYTES", 200):
+            for _ in range(10):
+                kit_log.event("gate", agent="x", detail="some detail text here", cwd=self.tmp)
+        self.assertTrue(os.listdir(os.path.join(self.tmp, "archive")))
+
+    def test_importer_round_trip(self):
+        src = os.path.join(self.tmp, "inbox")
+        with open(src, "w", encoding="utf-8") as f:
+            for i in range(3):
+                f.write(f"2026-11-0{i + 1}\tbranch_guard\tproj{i % 2}\tedit blocked on qa\n")
+        self.assertEqual(kit_log.importLegacy(src), 3)
+        self.assertFalse(os.path.exists(src))
+        self.assertTrue(os.path.exists(src + ".v0.bak"))
+        events = kit_log.read()
+        self.assertEqual(len(events), 3)
+        self.assertTrue(all(e["type"] == "legacy" for e in events))
+
+    def test_concurrent_append_leaves_valid_jsonl(self):
+        script = ("import sys; sys.path.insert(0, sys.argv[1]); import kit_log; import kit_common; "
+                  "kit_common.KIT_DIR = sys.argv[2]; "
+                  "[kit_log.event('gate', agent='p', detail='concurrent write', cwd=sys.argv[3]) for _ in range(2)]")
+        procs = [subprocess.Popen([sys.executable, "-c", script, SCRIPTS, self.tmp, self.tmp]) for _ in range(50)]
+        for p in procs:
+            self.assertEqual(p.wait(), 0)
+        lines = open(kit_log.globalPath(), encoding="utf-8").read().splitlines()
+        self.assertEqual(len(lines), 100)
+        for line in lines:
+            json.loads(line)
+
+    def test_opt_out(self):
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"KIT_LEARN": "off"}):
+            self.assertIsNone(kit_log.event("fix", agent="x", detail="a fix", cwd=self.tmp))
+            self.assertIsNotNone(kit_log.event("gate", agent="x", detail="blocked", cwd=self.tmp))
+        self.assertFalse(any(e["type"] == "fix" for e in kit_log.read()))
+        self.assertTrue(any(e["type"] == "gate" for e in kit_log.read(path=kit_log.projectPath(self.tmp))))
+        with mock.patch.dict(os.environ, {"KIT_LOG": "off"}):
+            self.assertIsNone(kit_log.event("gate", agent="x", detail="blocked", cwd=self.tmp))
 
 
 class KitIntegrity(unittest.TestCase):

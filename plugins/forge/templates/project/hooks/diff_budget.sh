@@ -12,7 +12,11 @@ read -r files lines < <(git diff --numstat HEAD | awk 'NF==3 && $1 ~ /^[0-9]+$/ 
 budget_files=3
 budget_lines=20
 if [ "$files" -gt "$budget_files" ] || [ "$lines" -gt "$budget_lines" ]; then
-  mkdir -p "${HOME}/.kit" 2>/dev/null && printf '%s\tdiff_budget\t%s\tfix over budget %s files %s lines\n' "$(date +%F)" "$(basename "$PWD")" "$files" "$lines" >> "${HOME}/.kit/inbox" 2>/dev/null
+  s="${CLAUDE_PLUGIN_ROOT:-}/scripts/kit_log.py"; [ -f "$s" ] || s="${HOME}/.kit/repo/plugins/forge/scripts/kit_log.py"
+  if [ -f "$s" ]; then
+    py=$(command -v python 2>/dev/null || command -v python3 2>/dev/null)
+    [ -n "$py" ] && "$py" "$s" event --type gate --agent diff_budget --reason-code diff_budget --severity block --branch "$(git branch --show-current 2>/dev/null)" --detail "fix over budget $files files $lines lines" >/dev/null 2>&1
+  fi
   echo "diff_budget: $files files and $lines changed lines; the budget is $budget_files files and $budget_lines lines. Stop, report, and recommend /forge:design." >&2
   exit 2
 fi
