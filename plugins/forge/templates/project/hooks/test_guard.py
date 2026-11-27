@@ -9,12 +9,14 @@ SKIP_MARKERS = ["pytest.mark.skip", "pytest.mark.xfail", "pytest.skip(", "pytest
 
 
 def note(msg):
+    """Log the gate decision to the event store via kit_log.py. Never raises."""
     try:
-        inbox = os.path.join(os.path.expanduser("~"), ".kit", "inbox")
-        os.makedirs(os.path.dirname(inbox), exist_ok=True)
-        with open(inbox, "a", encoding="utf-8") as f:
-            f.write(f"{time.strftime('%F')}\ttest_guard\t{os.path.basename(os.getcwd())}\t{msg}\n")
-    except OSError:
+        root = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
+        scripts = os.path.join(root, "scripts") if root else os.path.join(os.path.expanduser("~"), ".kit", "repo", "plugins", "forge", "scripts")
+        sys.path.insert(0, scripts)
+        import kit_log
+        kit_log.event("gate", agent="test_guard", reason_code="test_edit_blocked", severity="block", detail=msg, cwd=os.getcwd())
+    except Exception:
         pass
 
 

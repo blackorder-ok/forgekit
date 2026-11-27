@@ -12,3 +12,4 @@ __pycache__/
 # Internal progress and proof records: never pushed
 PROGRESS.md
 docs/PROOF_LOG.md
+.claude/learn/

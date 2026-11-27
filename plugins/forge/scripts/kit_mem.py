@@ -9,7 +9,7 @@ import re
 import sys
 from collections import defaultdict
 
-from kit_common import KIT_DIR
+import kit_log
 
 TYPES = ("gotcha", "fix", "decision", "preference")
 INDEX_BYTES = 2000  # about 500 tokens at 4 bytes per token
@@ -112,47 +112,65 @@ def timeline(mid, root=None):
 
 
 def inboxPath():
-    return os.path.join(KIT_DIR, "inbox")
+    return os.path.join(kit_log.kitDir(), "inbox")
 
 
 def readInbox(path=None):
-    path = path or inboxPath()
+    """Rows of (date, source, project, text, fingerprint). Reads the new events.jsonl or the legacy TSV inbox."""
+    path = path or kit_log.globalPath()
     if not os.path.exists(path):
         return []
     rows = []
-    for line in open(path, encoding="utf-8"):
-        p = line.rstrip("\n").split("\t")
-        if len(p) >= 4:
-            rows.append(p[:4])
+    with open(path, encoding="utf-8") as f:
+        first = f.readline().lstrip()
+        f.seek(0)
+        if first.startswith("{"):
+            for ev in kit_log.read(path=path):
+                rows.append((ev.get("ts", "")[:10], ev.get("agent", ""), ev.get("project_id", ""),
+                             ev.get("detail", ""), ev.get("fingerprint", "")))
+        else:
+            for line in f:
+                p = line.rstrip("\n").split("\t")
+                if len(p) >= 4:
+                    rows.append((p[0], p[1], p[2], p[3], ""))
     return rows
 
 
 def groupInbox(rows):
-    g = defaultdict(lambda: {"count": 0, "projects": set(), "last": ""})
-    for date, source, project, text in rows:
-        k = f"{source}:{text}"
+    g = defaultdict(lambda: {"count": 0, "projects": set(), "last": "", "text": ""})
+    for date, source, project, text, fp in rows:
+        k = f"{source}:{fp or text}"
         g[k]["count"] += 1
         g[k]["projects"].add(project)
         g[k]["last"] = date
+        g[k]["text"] = g[k]["text"] or text
     return g
 
 
 def inbox(clear=None, path=None):
-    path = path or inboxPath()
+    """Group recurring lessons. clear = "<source>:<text or fingerprint>" removes that group."""
+    if path is None:
+        kit_log.importLegacy()  # one-shot: old ~/.kit/inbox -> events.jsonl
+        path = kit_log.globalPath()
     rows = readInbox(path)
     if clear:
+        if path.endswith(".jsonl"):
+            ids = [ev["id"] for ev in kit_log.read(path=path)
+                   if f"{ev.get('agent', '')}:{ev.get('fingerprint') or ev.get('detail', '')}" == clear]
+            return f"archived {kit_log.archive(ids, path)} events for {clear}"
         keep = [r for r in rows if f"{r[1]}:{r[3]}" != clear]
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             for r in keep:
-                f.write("\t".join(r) + "\n")
+                f.write("\t".join(r[:4]) + "\n")
         return f"cleared {len(rows) - len(keep)} lines for {clear}"
     g = groupInbox(rows)
     if not g:
         return "inbox empty"
     out = []
     for k, v in sorted(g.items(), key=lambda kv: -kv[1]["count"]):
+        source = k.split(":", 1)[0]
         flag = "PROMOTE?" if v["count"] >= 3 and len(v["projects"]) >= 2 else ""
-        out.append(f"{v['count']}x {k} projects={len(v['projects'])} last={v['last']} {flag}".rstrip())
+        out.append(f"{v['count']}x {source}:{v['text']} projects={len(v['projects'])} last={v['last']} {flag}".rstrip())
     return "\n".join(out)
 
 
