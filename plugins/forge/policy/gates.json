@@ -5,13 +5,21 @@
   "bash": {
     "deny": [
       "\\bgit\\s+push\\b.*\\s(master|qa|release)\\b",
-      "\\bgit\\s+push\\s+(--force|-f)\\b",
-      "\\bgit\\s+push\\b.*--force-with-lease",
-      "\\bgit\\s+reset\\s+--hard\\b"
+      "\\bgit\\s+push\\b.*--mirror",
+      "\\bgit\\s+push\\b.*(--delete|\\s-d\\b)",
+      "\\bgit\\s+push\\b.*(--force|\\s-f\\b)",
+      "\\bgit\\s+tag\\s+(-d|-f)\\b",
+      "\\s--no-verify\\b",
+      "\\bsudo\\b",
+      "\\b(curl|wget)\\b[^|;&\\n]*\\|\\s*(sudo\\s+)?(ba|z|da)?sh\\b"
     ],
     "ask": [
-      "\\brm\\s+-r",
-      "\\bsed\\s+-i\\b"
+      "\\bgit\\s+push\\b",
+      "\\bgh\\s+pr\\s+merge\\b",
+      "\\bgh\\s+secret\\s+set\\b",
+      "\\bgh\\s+api\\b.*(-X|--method)\\s*(DELETE|PUT|PATCH)\\b",
+      "\\bdocker\\s+compose\\s+down\\b.*(\\s-v\\b|--volumes)",
+      "\\bgit\\s+reset\\s+--hard\\b"
     ]
   },
   "secretPaths": [".env", "secrets/*", "*-secrets.properties"],

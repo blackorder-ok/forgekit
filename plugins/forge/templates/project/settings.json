@@ -13,6 +13,12 @@
           {"type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}/scripts/hook_launch.sh\" \"$CLAUDE_PROJECT_DIR/scripts/hooks/branch_guard.sh\""},
           {"type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}/scripts/hook_launch.sh\" \"$CLAUDE_PROJECT_DIR/scripts/hooks/test_guard.py\""}
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {"type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}/scripts/hook_launch.sh\" \"${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}/scripts/bash_gate.py\""}
+        ]
       }
     ],
     "Stop": [
