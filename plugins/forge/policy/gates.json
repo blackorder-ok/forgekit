@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "protectedBranches": ["master", "qa", "release"],
+  "protectedPaths": ["tests/*"],
+  "bash": {
+    "deny": [
+      "\\bgit\\s+push\\b.*\\s(master|qa|release)\\b",
+      "\\bgit\\s+push\\s+(--force|-f)\\b",
+      "\\bgit\\s+push\\b.*--force-with-lease",
+      "\\bgit\\s+reset\\s+--hard\\b"
+    ],
+    "ask": [
+      "\\brm\\s+-r",
+      "\\bsed\\s+-i\\b"
+    ]
+  },
+  "secretPaths": [".env", "secrets/*", "*-secrets.properties"],
+  "agents": {
+    "architect": {"privilege": "read"},
+    "product-owner": {"privilege": "read"},
+    "reviewer": {"privilege": "read"},
+    "security-reviewer": {"privilege": "read"},
+    "ai-evaluator": {"privilege": "read"},
+    "developer": {"privilege": "edit"},
+    "tester": {"privilege": "edit"},
+    "doc-updater": {"privilege": "edit"},
+    "ops": {"privilege": "full"}
+  }
+}

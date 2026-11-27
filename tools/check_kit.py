@@ -131,6 +131,15 @@ def checkAll(tokens=False, plugin=PLUGIN, root=ROOT):
                 PROBLEMS.append(f"kit.json: {k}/{n} is registered but missing on disk")
     except (OSError, KeyError, ValueError):
         pass
+    # gate policy: must validate, and every agent it names must exist
+    sys.path.insert(0, os.path.join(plugin, "scripts"))
+    try:
+        import kit_policy
+        pol = kit_policy.load(basePath=os.path.join(plugin, "policy", "gates.json"))
+        for a in sorted(set(pol["agents"]) - set(agents)):
+            PROBLEMS.append(f"policy/gates.json: agent '{a}' has no agents/{a}.md")
+    except Exception as e:  # any failure is a problem, never a pass
+        PROBLEMS.append(f"policy/gates.json: {e}")
     # secrets / personal paths
     bad = [(r"AKIA[0-9A-Z]{16}", "AWS key"), (r"-----BEGIN [A-Z ]*PRIVATE KEY-----", "private key"),
            (r"ghp_[A-Za-z0-9]{20,}", "GitHub token"), (r"[A-Za-z]:\\Users\\[A-Za-z0-9._-]+", "Windows home path"),
