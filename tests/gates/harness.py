@@ -55,6 +55,17 @@ def hooksFor(settings, event, tool=None):
     return out
 
 
+def permissionDecision(stdout):
+    """A hook may answer with JSON on stdout (the Bash gate does). Returns deny, ask or None."""
+    try:
+        doc = json.loads(stdout.decode("utf-8", errors="replace"))
+    except ValueError:
+        return None
+    if not isinstance(doc, dict):
+        return None
+    return (doc.get("hookSpecificOutput") or {}).get("permissionDecision")
+
+
 def combine(codes):
     if not codes:
         return "allow"
@@ -208,7 +219,7 @@ def runCase(case, settings=None):
         with open(os.path.join(kitHome, name), "w", encoding="utf-8") as f:
             f.write(text)
     timeout = case.get("timeout", 20 if "hang" in inject else 10)
-    codes = []
+    codes, verdicts = [], []
     try:
         for cmd in hooksFor(settings, event, tool):
             argv = parseCommand(cmd, projPosix)
@@ -219,11 +230,15 @@ def runCase(case, settings=None):
                 r = subprocess.run(argv, input=stdin.encode("utf-8"), capture_output=True,
                                    cwd=cwd, env=env, timeout=timeout)
                 codes.append(r.returncode)
+                verdicts.append(permissionDecision(r.stdout))
             except subprocess.TimeoutExpired:
                 codes.append("timeout")
             except OSError:
                 codes.append("missing")
-        return {"decision": combine(codes), "codes": codes, "reason": lastReason(kitHome)}
+        decision = combine(codes)
+        if decision == "allow":  # a JSON permissionDecision refines an exit-0 hook
+            decision = "deny" if "deny" in verdicts else "ask" if "ask" in verdicts else "allow"
+        return {"decision": decision, "codes": codes, "reason": lastReason(kitHome)}
     finally:
         rmTree(os.path.dirname(proj) if "spaces_path" in inject else proj)
         if cwd != proj:
