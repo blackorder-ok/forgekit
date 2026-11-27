@@ -30,7 +30,18 @@ for _c in cases.CONTROLS:
 
 for _c in cases.ATTACKS:
     # Known bypass in v0.4.0: expected failure. Unexpected success fails the run, so a fixed gate must drop the mark.
-    setattr(GateAttacks, "test_" + _c["id"].replace("-", "_"), unittest.expectedFailure(makeTest(_c)))
+    _fn = makeTest(_c)
+    if _c.get("bypass"):
+        _fn = unittest.expectedFailure(_fn)
+    setattr(GateAttacks, "test_" + _c["id"].replace("-", "_"), _fn)
+
+
+class GateLauncherCases(unittest.TestCase):
+    pass
+
+
+for _c in cases.BREAKGLASS + cases.MINIMAL + cases.LAUNCHER:
+    setattr(GateLauncherCases, "test_" + _c["id"].replace("-", "_"), makeTest(_c))
 
 
 class CaseTableTests(unittest.TestCase):
