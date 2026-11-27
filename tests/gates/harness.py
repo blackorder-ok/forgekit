@@ -27,7 +27,10 @@ TEMPLATE_SETTINGS = os.path.join(PLUGIN, "templates", "project", "settings.json"
 GIT_USR_BIN = r"C:\Program Files\Git\usr\bin"
 BASH = next((p for p in (r"C:\Program Files\Git\usr\bin\bash.exe", r"C:\Program Files\Git\bin\bash.exe") if os.path.exists(p)), "bash")
 GIT_ID = ["-c", "user.email=gate@test", "-c", "user.name=gate"]
-INJECTIONS = {"malformed_stdin", "missing_interpreter", "crash", "hang", "unreadable_home", "wrong_cwd"}
+INJECTIONS = {"malformed_stdin", "missing_interpreter", "crash", "hang", "unreadable_home", "wrong_cwd",
+              "missing_script", "spaces_path"}
+PLUGIN_POSIX = PLUGIN.replace("\\", "/")
+LAUNCHER_ROOT = "${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}"
 
 
 class HarnessSkip(Exception):
@@ -96,11 +99,15 @@ def stubFor(name, mode):
 
 
 def makeProject(case, inject):
-    proj = tempfile.mkdtemp(prefix="gate-proj-")
+    base = tempfile.mkdtemp(prefix="gate base ") if "spaces_path" in inject else None
+    proj = tempfile.mkdtemp(prefix="gate-proj-", dir=base)
     hooks = os.path.join(proj, "scripts", "hooks")
     os.makedirs(hooks)
     for name in os.listdir(TEMPLATE_HOOKS):
         shutil.copyfile(os.path.join(TEMPLATE_HOOKS, name), os.path.join(hooks, name))
+    if "missing_script" in inject:
+        for name in os.listdir(hooks):
+            os.remove(os.path.join(hooks, name))
     if "crash" in inject or "hang" in inject:
         mode = "crash" if "crash" in inject else "hang"
         for name in os.listdir(hooks):
@@ -134,6 +141,7 @@ def makeProject(case, inject):
 
 
 def parseCommand(cmd, projPosix):
+    cmd = cmd.replace(LAUNCHER_ROOT, PLUGIN_POSIX).replace("$CLAUDE_PLUGIN_ROOT", PLUGIN_POSIX)
     argv = shlex.split(cmd.replace("$CLAUDE_PROJECT_DIR", projPosix), posix=True)
     if argv and argv[0] == "bash":
         argv[0] = BASH
@@ -191,9 +199,15 @@ def runCase(case, settings=None):
                 "CLAUDE_PLUGIN_ROOT": PLUGIN, "CLAUDE_PROJECT_DIR": projPosix})
     env.pop("CLAUDE_SESSION_ID", None)
     env.pop("KIT_HOOKS", None)
+    env.update(case.get("env") or {})
     if path is not None:
         env["PATH"] = path
-    timeout = case.get("timeout", 2 if "hang" in inject else 10)
+    if "unreadable_home" not in inject:
+        os.makedirs(kitHome, exist_ok=True)
+    for name, text in (case.get("kit_files") or {}).items():  # e.g. a breakglass file in the kit home
+        with open(os.path.join(kitHome, name), "w", encoding="utf-8") as f:
+            f.write(text)
+    timeout = case.get("timeout", 20 if "hang" in inject else 10)
     codes = []
     try:
         for cmd in hooksFor(settings, event, tool):
@@ -211,7 +225,7 @@ def runCase(case, settings=None):
                 codes.append("missing")
         return {"decision": combine(codes), "codes": codes, "reason": lastReason(kitHome)}
     finally:
-        rmTree(proj)
+        rmTree(os.path.dirname(proj) if "spaces_path" in inject else proj)
         if cwd != proj:
             rmTree(cwd)
 

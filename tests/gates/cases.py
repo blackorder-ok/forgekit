@@ -65,14 +65,10 @@ ATTACKS += [
     dict(id="atk-stop-untracked-large", event="Stop", branch="develop", fix_active=True,
          untracked={"big.py": "\n".join(str(i) for i in range(30)) + "\n"}, expect="deny", bypass=True,
          note="a 30-line untracked file is outside the budget but counts as 0 lines"),
-    dict(id="atk-crash-test-guard", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["crash"], expect="deny", bypass=True,
-         note="a crashing hook exits 1, which the runtime treats as non-blocking"),
-    dict(id="atk-hang-test-guard", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["hang"], expect="deny", bypass=True,
-         note="a timed-out hook is not a block"),
-    dict(id="atk-malformed-stdin-test-guard", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["malformed_stdin"], expect="deny", bypass=True,
-         note="test_guard raises on bad stdin and exits 1: it should fail closed"),
-    dict(id="atk-missing-python-test-guard", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["missing_interpreter"], expect="deny", bypass=True,
-         note="no interpreter means exit 127 and an allowed edit"),
+    dict(id="atk-crash-test-guard", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["crash"], expect="deny", fixed="WI-06 launcher",),
+    dict(id="atk-hang-test-guard", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["hang"], env={"KIT_HOOK_TIMEOUT": "2"}, expect="deny", fixed="WI-06 launcher",),
+    dict(id="atk-malformed-stdin-test-guard", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["malformed_stdin"], expect="deny", fixed="WI-06 launcher",),
+    dict(id="atk-missing-python-test-guard", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["missing_interpreter"], expect="deny", fixed="WI-06 launcher",),
     dict(id="atk-bash-git-push-force-with-lease", tool="Bash", input={"command": "git push --force-with-lease origin master"}, branch="develop", expect="deny", bypass=True,
          note="the permissions deny list does not cover this spelling"),
     dict(id="atk-bash-reset-hard-master", tool="Bash", input={"command": "git reset --hard HEAD~1"}, branch="master", expect="deny", bypass=True,
@@ -81,4 +77,27 @@ ATTACKS += [
          note="test_guard is bypassed through Bash"),
 ]
 
-CASES = CONTROLS + ATTACKS
+
+# WI-06 break-glass and minimal mode. Breakglass downgrades errors only; denials always stand.
+import datetime as _dt
+FUTURE_EXPIRY = (_dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+PAST_EXPIRY = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+LONG_EXPIRY = (_dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+BREAKGLASS = [
+    dict(id="bg-error-allowed-while-active", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["crash"], kit_files={"breakglass": FUTURE_EXPIRY}, expect="allow"),
+    dict(id="bg-denial-still-denied", tool="Edit", input={"file_path": "app.py", "old_string": "x", "new_string": "y"}, branch="master", kit_files={"breakglass": FUTURE_EXPIRY}, expect="deny", reason="protected_branch"),
+    dict(id="bg-expired-does-not-downgrade", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["crash"], kit_files={"breakglass": PAST_EXPIRY}, expect="deny"),
+    dict(id="bg-over-4h-does-not-downgrade", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["crash"], kit_files={"breakglass": LONG_EXPIRY}, expect="deny"),
+    dict(id="bg-no-zone-does-not-downgrade", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", inject=["crash"], kit_files={"breakglass": "2099-01-01T00:00:00"}, expect="deny"),
+]
+MINIMAL = [
+    dict(id="min-develop-hooks-skipped", tool="Edit", input=TEST_EDIT_REMOVE_ASSERT, branch="develop", env={"KIT_HOOKS": "minimal"}, expect="allow"),
+    dict(id="min-master-hooks-still-run", tool="Edit", input={"file_path": "app.py", "old_string": "x", "new_string": "y"}, branch="master", env={"KIT_HOOKS": "minimal"}, expect="deny", reason="protected_branch"),
+]
+
+LAUNCHER = [
+    dict(id="launch-missing-script-denies", tool="Edit", input={"file_path": "app.py", "old_string": "x", "new_string": "y"}, branch="develop", inject=["missing_script"], expect="deny"),
+    dict(id="launch-spaces-path-master-denies", tool="Edit", input={"file_path": "app.py", "old_string": "x", "new_string": "y"}, branch="master", inject=["spaces_path"], expect="deny", reason="protected_branch"),
+    dict(id="launch-spaces-path-allows", tool="Edit", input={"file_path": "app.py", "old_string": "x", "new_string": "y"}, branch="develop", inject=["spaces_path"], expect="allow"),
+]
+CASES = CONTROLS + ATTACKS + BREAKGLASS + MINIMAL + LAUNCHER

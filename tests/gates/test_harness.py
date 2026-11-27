@@ -88,8 +88,9 @@ class InjectionTests(unittest.TestCase):
         case = dict(EDIT, tool="Edit", input={"file_path": "tests/unit/test_a.py", "old_string": "assert a", "new_string": "pass"},
                     inject=["crash"])
         got = harness.runCase(case)
-        self.assertEqual(got["codes"], [1, 1])  # branch_guard.sh and test_guard.py both crash
-        self.assertEqual(got["decision"], "error")
+        # Both gates crash (exit 1). The launcher turns each crash into exit 2, so the edit is denied.
+        self.assertEqual(got["codes"], [2, 2])
+        self.assertEqual(got["decision"], "deny")
 
     def test_real_gates_still_deny_on_master_with_unreadable_home(self):
         got = harness.runCase(dict(EDIT, branch="master", inject=["unreadable_home"]))

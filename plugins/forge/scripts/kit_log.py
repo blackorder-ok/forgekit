@@ -166,7 +166,7 @@ def lockFile(path):
         try:
             os.close(os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
             break
-        except FileExistsError:
+        except (FileExistsError, PermissionError):  # Windows reports a lock file being deleted as PermissionError: busy, retry
             try:
                 if time.time() - os.path.getmtime(lock) > LOCK_STALE:
                     os.remove(lock)
