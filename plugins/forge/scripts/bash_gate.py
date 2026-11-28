@@ -33,7 +33,8 @@ GIT_WRITE = ("commit", "merge", "rebase", "cherry-pick", "am", "revert", "reset"
 REDIRECTS = (">", ">>", ">|", "&>", ">&")
 READS = ("<",)
 HEREDOCS = ("<<", "<<<")
-DEFAULT_SECRETS = [".env", "secrets/*", "*-secrets.properties"]
+DEFAULT_SECRETS = [".env", ".env.*", "secrets/*", "*/secrets/*", "*-secrets.properties",
+                   "*/.ssh/*", "*/.aws/*", "*/.config/gh/*"]
 REASONS = {
     "bash_sudo": ("sudo is not allowed from an agent session", "run the command yourself, outside the agent"),
     "bash_push_protected": ("push to a protected branch (qa, release, master) is blocked",
@@ -65,6 +66,8 @@ REASONS = {
     "bash_inline_on_protected": ("inline interpreter code on a protected branch needs confirmation", "run the script from develop"),
     "bash_xargs_write": ("xargs feeds paths from stdin into a write command", "name the files explicitly"),
     "bash_no_command": ("the Bash input has no command", "send a command string"),
+    "bash_env_dump": ("this prints environment variables or secrets from the process or container",
+                      "name the variable you need, e.g. printenv NAME, and ask the user if it is a secret"),
     "bash_fix_marker": ("the fix-run marker is removed only by finishing the run",
                         "run: python <kit>/scripts/kit_fix.py finish"),
 }
@@ -241,12 +244,35 @@ def isProtectedWrite(p, policy):
     return any(overlaps(p, pat) for pat in policy["protectedPaths"])
 
 
-def isSecret(p, policy):
+def resolvedForms(p, root=None):
+    """Every form of a path the gate should match: as written, normalised, real (symlinks), and project-relative."""
+    base = os.path.expanduser("~") if p.startswith(("~", "$HOME", "${HOME}")) else (root or os.getcwd())
+    expanded = os.path.expanduser(p.replace("${HOME}", "~").replace("$HOME", "~"))
+    full = os.path.normpath(os.path.join(base, expanded))
+    forms = {normPath(p), normPath(full)}
+    try:
+        forms.add(normPath(os.path.realpath(full)))
+    except OSError:
+        pass
+    if root:
+        rootNorm = normPath(os.path.realpath(root)).rstrip("/") + "/"
+        for f in list(forms):
+            if f.startswith(rootNorm):
+                forms.add(f[len(rootNorm):])
+    return forms
+
+
+def isSecret(p, policy, root=None):
     if kitPath(p):
         return True
-    n = normPath(p)
     secrets = policy.get("secretPaths") or DEFAULT_SECRETS
-    return any(fnmatch.fnmatchcase(n, pat) or fnmatch.fnmatchcase(os.path.basename(n), pat) for pat in secrets)
+    for n in resolvedForms(p, root):
+        name = os.path.basename(n)
+        if name.endswith(".example"):  # committed templates are readable
+            continue
+        if any(fnmatch.fnmatchcase(n, pat) or fnmatch.fnmatchcase(name, pat) for pat in secrets):
+            return True
+    return False
 
 
 def gitSub(args):
@@ -354,6 +380,20 @@ def verbFindings(verb, words, ctx, depth):
     return out
 
 
+def envDumpFindings(verb, words):
+    """Commands that print the environment, process secrets or container config."""
+    args = words[1:]
+    if verb == "printenv" or (verb == "set" and not args):
+        return [deny("bash_env_dump")]
+    if any(re.match(r"^/proc/([^/]+|\*)/(environ|cmdline)", w) for w in words):
+        return [deny("bash_env_dump")]
+    if verb == "docker" and args[:1] == ["inspect"]:
+        return [deny("bash_env_dump")]
+    if verb == "docker" and args[:2] == ["compose", "config"] and "--no-interpolate" not in args:
+        return [deny("bash_env_dump")]
+    return []
+
+
 def classifySegment(seg, ctx, depth):
     try:
         toks = tokens(seg)
@@ -363,13 +403,15 @@ def classifySegment(seg, ctx, depth):
     while words and re.match(r"^\w+=", words[0]):
         words = words[1:]
     sawXargs = False
+    sawEnv = bool(words) and os.path.basename(words[0]) == "env" and all(
+        w.startswith("-") or re.match(r"^\w+=", w) for w in words[1:])
     while words and os.path.basename(words[0]) in WRAPPERS:
         sawXargs = sawXargs or os.path.basename(words[0]) == "xargs"
         words = words[1:]
         while words and re.match(r"^\w+=", words[0]):
             words = words[1:]
     if not words:
-        return []
+        return [deny("bash_env_dump")] if sawEnv else []
     verb = os.path.basename(words[0].replace("\\", "/")).lower()
     if verb.endswith(".exe"):
         verb = verb[:-4]
@@ -389,13 +431,14 @@ def classifySegment(seg, ctx, depth):
         out.append(deny("bash_write_on_protected_branch"))
     if verb != "git" or gitSub(words[1:])[0] != "commit":
         for p in reads + [w for w in words[1:]]:
-            if isSecret(p, ctx["policy"]):
+            if isSecret(p, ctx["policy"], ctx.get("root")):
                 out.append(deny("bash_read_secret"))
                 break
     else:
         for p in reads:
-            if isSecret(p, ctx["policy"]):
+            if isSecret(p, ctx["policy"], ctx.get("root")):
                 out.append(deny("bash_read_secret"))
+    out += envDumpFindings(verb, words)
     if verb in DELETE_VERBS and any(FIX_MARKER in w for w in words[1:]):
         out.append(deny("bash_fix_marker"))
     out += verbFindings(verb, words, ctx, depth)
@@ -423,12 +466,13 @@ def analyze(text, ctx, depth=0):
     return out
 
 
-def decide(command, branch, policy):
+def decide(command, branch, policy, root=None):
     """Returns (verdict, code, reason, alternative). Verdict is allow, ask or deny."""
     if policy.get("denyAll"):
         return ("deny", "bash_policy_error") + REASONS["bash_policy_error"]
     ctx = {
         "policy": policy,
+        "root": root,
         "branch": branch,
         "protected": set(policy["protectedBranches"]) | set(ENV_BRANCHES),
         "onProtected": branch == "" or branch in policy["protectedBranches"] or branch in ENV_BRANCHES,
@@ -484,7 +528,7 @@ def main():
         emit("ask", "bash_no_command", *REASONS["bash_no_command"], "", cwd)
         return 0
     policy = kit_policy.loadOrDeny(overridePath=os.path.join(cwd, ".claude", "policy.json"))
-    verdict, code, reason, alt = decide(command, currentBranch(cwd), policy)
+    verdict, code, reason, alt = decide(command, currentBranch(cwd), policy, cwd)
     emit(verdict, code, reason, alt, command, cwd)
     return 0
 

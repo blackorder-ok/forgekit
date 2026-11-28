@@ -1,7 +1,14 @@
 {
   "version": 1,
-  "protectedBranches": ["master", "qa", "release"],
-  "protectedPaths": ["tests/*"],
+  "protectedBranches": [
+    "master",
+    "qa",
+    "release"
+  ],
+  "protectedPaths": [
+    "tests/*",
+    ".githooks/*"
+  ],
   "bash": {
     "deny": [
       "\\bgit\\s+push\\b.*\\s(master|qa|release)\\b",
@@ -22,16 +29,46 @@
       "\\bgit\\s+reset\\s+--hard\\b"
     ]
   },
-  "secretPaths": [".env", "secrets/*", "*-secrets.properties"],
+  "secretPaths": [
+    ".env",
+    ".env.*",
+    "secrets/*",
+    "*/secrets/*",
+    "*-secrets.properties",
+    ".ssh/*",
+    "*/.ssh/*",
+    ".aws/*",
+    "*/.aws/*",
+    ".config/gh/*",
+    "*/.config/gh/*"
+  ],
   "agents": {
-    "architect": {"privilege": "read"},
-    "product-owner": {"privilege": "read"},
-    "reviewer": {"privilege": "read"},
-    "security-reviewer": {"privilege": "read"},
-    "ai-evaluator": {"privilege": "read"},
-    "developer": {"privilege": "edit"},
-    "tester": {"privilege": "edit"},
-    "doc-updater": {"privilege": "edit"},
-    "ops": {"privilege": "full"}
+    "architect": {
+      "privilege": "read"
+    },
+    "product-owner": {
+      "privilege": "read"
+    },
+    "reviewer": {
+      "privilege": "read"
+    },
+    "security-reviewer": {
+      "privilege": "read"
+    },
+    "ai-evaluator": {
+      "privilege": "read"
+    },
+    "developer": {
+      "privilege": "edit"
+    },
+    "tester": {
+      "privilege": "edit"
+    },
+    "doc-updater": {
+      "privilege": "edit"
+    },
+    "ops": {
+      "privilege": "full"
+    }
   }
 }
