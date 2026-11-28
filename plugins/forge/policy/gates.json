@@ -43,32 +43,81 @@
     "*/.config/gh/*"
   ],
   "agents": {
-    "architect": {
-      "privilege": "read"
-    },
     "product-owner": {
-      "privilege": "read"
+      "privilege": "read",
+      "bashAllow": []
+    },
+    "architect": {
+      "privilege": "edit",
+      "writeAllow": [
+        "docs/design/**",
+        "docs/plan.md",
+        "**/*.plan.md"
+      ],
+      "bashAllow": []
     },
     "reviewer": {
-      "privilege": "read"
+      "privilege": "read",
+      "bashAllow": [
+        "git (diff|log|show|status|grep|ls-files|rev-parse|blame)\\b[^;&|<>$`()]*",
+        "pip-audit -r [\\w./-]+",
+        "bandit( -[\\w]+| [\\w./-]+)*",
+        "gitleaks (detect|dir)( --[\\w-]+| [\\w./-]+)*",
+        "semgrep( --[\\w-]+(=[\\w./,-]+)?| [\\w./-]+)*"
+      ]
     },
     "security-reviewer": {
-      "privilege": "read"
-    },
-    "ai-evaluator": {
-      "privilege": "read"
+      "privilege": "read",
+      "bashAllow": [
+        "git (diff|log|show|status|grep|ls-files|rev-parse|blame)\\b[^;&|<>$`()]*",
+        "pip-audit -r [\\w./-]+",
+        "bandit( -[\\w]+| [\\w./-]+)*",
+        "gitleaks (detect|dir)( --[\\w-]+| [\\w./-]+)*",
+        "semgrep( --[\\w-]+(=[\\w./,-]+)?| [\\w./-]+)*"
+      ]
     },
     "developer": {
-      "privilege": "edit"
+      "privilege": "edit",
+      "writeDeny": [
+        "tests/**",
+        ".github/**",
+        "docker/**",
+        ".claude/**",
+        "plugins/**"
+      ]
     },
     "tester": {
-      "privilege": "edit"
+      "privilege": "edit",
+      "writeAllow": [
+        "tests/**",
+        "docs/qa/**"
+      ]
+    },
+    "ai-evaluator": {
+      "privilege": "edit",
+      "writeAllow": [
+        "evals/cases.jsonl"
+      ]
     },
     "doc-updater": {
-      "privilege": "edit"
+      "privilege": "edit",
+      "writeAllow": [
+        "**/*.md",
+        "CHANGELOG.md",
+        "docs/**",
+        "release-notes/**"
+      ],
+      "bashAllow": [
+        "git (diff|log|show|status)\\b[^;&|<>$`()]*",
+        "rg( -[\\w]+| [\\w./*-]+)*"
+      ]
     },
     "ops": {
-      "privilege": "full"
+      "privilege": "edit",
+      "writeAllow": [
+        "docker/**",
+        ".github/**"
+      ]
     }
   }
 }

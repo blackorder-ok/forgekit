@@ -14,7 +14,8 @@ import sys
 PRIVILEGES = ("read", "edit", "full")  # ordered from least to most
 TOP_KEYS = {"version", "protectedBranches", "protectedPaths", "bash", "secretPaths", "agents"}
 BASH_KEYS = {"deny", "ask"}
-AGENT_KEYS = {"privilege"}
+AGENT_KEYS = {"privilege", "writeAllow", "writeDeny", "bashAllow"}
+OVERRIDE_AGENT_KEYS = {"privilege"}  # a project may only change an agent's privilege level
 LIST_KEYS = ("protectedBranches", "protectedPaths", "secretPaths")
 MAX_BYTES = 64 * 1024
 MAX_ITEMS = 200
@@ -77,11 +78,18 @@ def validate(doc, where="policy", base=True):
         for name, spec in agents.items():
             if not re.fullmatch(r"[a-z][a-z0-9-]{0,40}", name):
                 _fail(f"{where}.agents", f"bad agent name {name!r}")
-            if not isinstance(spec, dict) or set(spec) - AGENT_KEYS:
-                _fail(f"{where}.agents.{name}", "only privilege allowed")
+            allowedKeys = AGENT_KEYS if base else OVERRIDE_AGENT_KEYS
+            if not isinstance(spec, dict) or set(spec) - allowedKeys:
+                _fail(f"{where}.agents.{name}", f"only {sorted(allowedKeys)} allowed")
             if spec.get("privilege") not in PRIVILEGES:
                 _fail(f"{where}.agents.{name}", f"privilege must be one of {PRIVILEGES}")
-            out["agents"][name] = {"privilege": spec["privilege"]}
+            entry = {"privilege": spec["privilege"]}
+            for key in ("writeAllow", "writeDeny"):
+                if key in spec:
+                    entry[key] = _strList(f"{where}.agents.{name}.{key}", spec[key], regex=False)
+            if "bashAllow" in spec:
+                entry["bashAllow"] = _strList(f"{where}.agents.{name}.bashAllow", spec["bashAllow"], regex=True)
+            out["agents"][name] = entry
     elif base:
         _fail(where, "missing agents")
     return out
@@ -109,7 +117,7 @@ def tighten(base, override):
         allowed = agents.get(name, {"privilege": "full"})["privilege"]  # an agent absent from the base is unrestricted
         if PRIVILEGES.index(spec["privilege"]) > PRIVILEGES.index(allowed):
             _fail(f"override.agents.{name}", f"privilege {spec['privilege']} loosens base {allowed}")
-        agents[name] = {"privilege": spec["privilege"]}
+        agents[name] = {**agents.get(name, {}), "privilege": spec["privilege"]}
     out["agents"] = agents
     return out
 

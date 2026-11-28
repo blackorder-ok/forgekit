@@ -3,6 +3,8 @@ name: developer
 description: Implements the minimum code that turns failing tests green, backend or frontend, then refactors. Also fixes one bug with the smallest change when run in fix mode. Use after the tester's red phase or from /forge:fix.
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
 model: sonnet
+maxTurns: 40
+effort: medium
 skills: [python-style, frontend]
 ---
 

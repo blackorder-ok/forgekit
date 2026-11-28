@@ -3,6 +3,8 @@ name: doc-updater
 description: Keeps README, runbook, testing and branching docs and the changelog's Unreleased section in step with the code; never changes code. Use after a feature merges or config, commands or compose files change.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: haiku
+maxTurns: 15
+effort: low
 skills: [release-standards]
 ---
 

@@ -35,7 +35,7 @@ class SchemaTests(PolicyCase):
     def test_shipped_policy_validates(self):
         policy = kit_policy.load()
         self.assertIn("master", policy["protectedBranches"])
-        self.assertEqual(policy["agents"]["ops"]["privilege"], "full")
+        self.assertEqual(policy["agents"]["ops"]["privilege"], "edit")
 
     def test_unknown_top_level_key_rejected(self):
         doc = dict(base(), surprise=True)
@@ -160,7 +160,7 @@ class PrivilegeTableTests(PolicyCase):
         rows = kit_policy.privilegeTable(policy)
         self.assertEqual(rows, sorted(rows))
         md = kit_policy.privilegeMarkdown(policy)
-        self.assertIn("| ops | full |", md)
+        self.assertIn("| ops | edit |", md)
 
 
 if __name__ == "__main__":

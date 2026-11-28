@@ -13,6 +13,37 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/hook_launch.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/agent_guard.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/hook_launch.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/agent_identity.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/hook_launch.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/agent_identity.py\""
+          }
+        ]
+      }
     ]
   }
 }

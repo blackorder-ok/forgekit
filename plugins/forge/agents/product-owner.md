@@ -3,6 +3,9 @@ name: product-owner
 description: Turns a project idea into users, acceptance criteria, out-of-scope items and at most four open questions. Use before planning, or when a feature's goal is vague.
 tools: Read, Grep, Glob
 model: sonnet
+disallowedTools: Write, Edit, Bash
+maxTurns: 8
+effort: low
 skills: [project-plan]
 ---
 

@@ -3,6 +3,8 @@ name: ai-evaluator
 description: Writes and maintains eval cases for AI features, runs /forge:eval and explains failures. Use when an LLM feature is planned or changed, or an eval run fails.
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
 model: sonnet
+maxTurns: 20
+effort: medium
 skills: [llm-eval]
 ---
 

@@ -34,3 +34,5 @@ End with a summary: branch, files changed, test count per level, review verdict,
 - Security `FAIL`: stop. Report the findings. Do not fix and re-run without the user's go-ahead.
 - Eval below minimum: stop and report the metric and the failing cases.
 - Any gate `RED` after a fix: stop. Report the output.
+
+**Missing verdict.** If the agent's reply has no `VERDICT:` line (cut off or at its turn limit), send it once with `SendMessage`: summarise what is done and what is left, finish the task, and end with the verdict line. If there is still no verdict, or the agent does not reply, stop and report `INCOMPLETE` with its partial output. Never make a third attempt.
