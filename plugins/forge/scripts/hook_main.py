@@ -181,6 +181,11 @@ def selfcheck(projectDir):
             for rel in re.findall(r"\$CLAUDE_PROJECT_DIR/([^\"'\s]+)", cmd):
                 if not os.path.isfile(os.path.join(projectDir, rel)):
                     problems.append(f"missing {rel}")
+    try:  # a fix-run marker from an earlier branch or session is cleared, and logged
+        import kit_fix
+        kit_fix.clearStale(projectDir)
+    except (OSError, ValueError):
+        pass
     sentinel = os.path.join(projectDir, SENTINEL)
     if problems:
         text = "; ".join(problems)

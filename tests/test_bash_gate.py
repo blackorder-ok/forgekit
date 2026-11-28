@@ -128,6 +128,11 @@ TABLE = [
     ("echo x | xargs rm", "master", DENY),
     (r"find . -name x -exec rm tests/a.py \;", "develop", DENY),
     ("find . -name x -print", "develop", ALLOW),
+    # the fix-run marker is removed only by kit_fix.py finish
+    ("rm .claude/fix-active", "develop", DENY),
+    ("rm -f .claude/fix-active", "develop", DENY),
+    ("mv .claude/fix-active /tmp/x", "develop", DENY),
+    ("cat .claude/fix-active", "develop", ALLOW),
 ]
 
 # Cases where the decision code matters, not only the verdict.
@@ -144,6 +149,7 @@ CODES = {
     "docker compose down -v": "bash_compose_down_volumes",
     "rm -rf a b c d e f g h i j k l": "bash_bulk_delete",
     PAD30: "bash_too_many_segments",
+    "rm .claude/fix-active": "bash_fix_marker",
 }
 
 
