@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+# Blocks a commit whose staged changes hold a secret. Enable once per clone: git config core.hooksPath .githooks
+# Uses the pinned gitleaks when it is on PATH; otherwise the kit's pattern scan. CI gitleaks stays authoritative.
+if command -v gitleaks >/dev/null 2>&1; then
+  exec gitleaks protect --staged --no-banner --redact -c .gitleaks.toml
+fi
+s="${KIT_PLUGIN:-$HOME/.kit/repo/plugins/forge}/scripts/secret_scan.py"
+if [ ! -f "$s" ]; then
+  echo "pre-commit: no gitleaks and no kit scanner at $s. Commit blocked." >&2
+  exit 1
+fi
+py=$(command -v python 2>/dev/null || command -v python3 2>/dev/null)
+[ -n "$py" ] || { echo "pre-commit: Python not found. Commit blocked." >&2; exit 1; }
+exec "$py" "$s" precommit
