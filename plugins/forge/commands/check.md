@@ -16,3 +16,5 @@ If `RED`, include the failing output and the most likely cause. Do not change ap
 - Any other failure: stop, return `RED` with the step name, the output, and the most likely cause. Do not continue to later steps.
 - Missing `secrets/application-<env>-secrets.properties`: stop and tell the user which file to create. Never create it with values.
 - Never edit application code to pass a check.
+
+**Missing verdict.** If the agent's reply has no `VERDICT:` line (cut off or at its turn limit), send it once with `SendMessage`: summarise what is done and what is left, finish the task, and end with the verdict line. If there is still no verdict, or the agent does not reply, stop and report `INCOMPLETE` with its partial output. Never make a third attempt.

@@ -3,6 +3,8 @@ name: tester
 description: Writes failing tests from a design before implementation, writes regression tests for bugs, and runs e2e, smoke and uat levels against a deployed environment. Use after design approval, from /forge:fix, and from /forge:qa.
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
 model: sonnet
+maxTurns: 30
+effort: medium
 skills: [test-levels]
 ---
 

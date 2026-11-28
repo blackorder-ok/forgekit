@@ -22,3 +22,5 @@ Hotfix: $ARGUMENTS
 
 ## On failure
 - Same as `/forge:fix`. In addition: if `master` cannot be checked out cleanly, stop. Do not start from another branch.
+
+**Missing verdict.** If the agent's reply has no `VERDICT:` line (cut off or at its turn limit), send it once with `SendMessage`: summarise what is done and what is left, finish the task, and end with the verdict line. If there is still no verdict, or the agent does not reply, stop and report `INCOMPLETE` with its partial output. Never make a third attempt.

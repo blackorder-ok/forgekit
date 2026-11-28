@@ -10,6 +10,14 @@
       "commands/scaffold-project.md": {
         "bytes": 7000,
         "reason": "writes the whole project skeleton; every step is a file the user relies on"
+      },
+      "agents/ops.md": {
+        "bytes": 3100,
+        "reason": "owns the GREEN/RED gate; the verdict line rule (WI-12) adds about 60 bytes"
+      },
+      "commands/feature.md": {
+        "bytes": 4100,
+        "reason": "orchestrates every gate; the missing-verdict rule (WI-12) adds about 300 bytes"
       }
     }
   },

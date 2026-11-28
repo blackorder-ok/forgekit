@@ -3,6 +3,9 @@ name: architect
 description: Writes the project plan file or one feature's design doc, with contracts, modules, test plan and risks. Read-mostly, never writes application code. Use from /forge:plan-project and /forge:design.
 tools: Read, Write, Grep, Glob, Skill
 model: opus
+disallowedTools: Edit, Bash
+maxTurns: 25
+effort: high
 skills: [project-plan]
 ---
 
