@@ -65,7 +65,12 @@ REASONS = {
     "bash_inline_on_protected": ("inline interpreter code on a protected branch needs confirmation", "run the script from develop"),
     "bash_xargs_write": ("xargs feeds paths from stdin into a write command", "name the files explicitly"),
     "bash_no_command": ("the Bash input has no command", "send a command string"),
+    "bash_fix_marker": ("the fix-run marker is removed only by finishing the run",
+                        "run: python <kit>/scripts/kit_fix.py finish"),
 }
+
+FIX_MARKER = "fix-active"
+DELETE_VERBS = ("rm", "unlink", "rmdir", "del", "mv", "shred", "truncate")
 
 
 class Finding:
@@ -391,6 +396,8 @@ def classifySegment(seg, ctx, depth):
         for p in reads:
             if isSecret(p, ctx["policy"]):
                 out.append(deny("bash_read_secret"))
+    if verb in DELETE_VERBS and any(FIX_MARKER in w for w in words[1:]):
+        out.append(deny("bash_fix_marker"))
     out += verbFindings(verb, words, ctx, depth)
     return out
 

@@ -18,6 +18,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -145,9 +146,12 @@ def makeProject(case, inject):
         os.makedirs(os.path.dirname(full), exist_ok=True)
         with open(full, "w", encoding="utf-8") as f:
             f.write(text)
-    if case.get("fix_active"):
+    if case.get("fix_active"):  # a marker as kit_fix.py start writes it, based on the initial commit
+        head = subprocess.run(["git", "-C", proj, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
         os.makedirs(os.path.join(proj, ".claude"), exist_ok=True)
-        open(os.path.join(proj, ".claude", "fix-active"), "w").close()
+        with open(os.path.join(proj, ".claude", "fix-active"), "w", encoding="utf-8") as f:
+            json.dump({"command": "/forge:fix", "base_sha": head, "branch": case.get("branch") or "",
+                       "started_epoch": time.time(), "ttl_h": 12}, f)
     return proj
 
 

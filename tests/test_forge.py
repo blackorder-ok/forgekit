@@ -189,15 +189,15 @@ class HookTests(TmpCase):
         self.assertEqual([e["reason_code"] for e in events], ["protected_branch", "protected_branch"])  # master and qa block; develop passes
 
     def test_diff_budget(self):
+        import kit_fix
         d = self._git("develop")
-        env = dict(os.environ, HOME=self.tmp, PATH=os.environ.get("PATH", ""))
+        env = dict(os.environ, HOME=self.tmp, PATH=os.environ.get("PATH", ""), CLAUDE_PLUGIN_ROOT=os.path.join(ROOT, "plugins", "forge"))
         run = lambda: subprocess.run([BASH, os.path.join(HOOKS, "diff_budget.sh")], cwd=d, env=env, input=b"{}", capture_output=True).returncode
         self.assertEqual(run(), 0)  # no marker file
-        os.makedirs(os.path.join(d, ".claude"))
-        open(os.path.join(d, ".claude", "fix-active"), "w").close()
         open(os.path.join(d, "a.txt"), "w").write("1\n")
         subprocess.run(["git", "-C", d, "add", "a.txt"], check=True)
         subprocess.run(["git", "-C", d, "-c", "user.email=a@b", "-c", "user.name=t", "commit", "-q", "-m", "a"], check=True)
+        self.assertEqual(kit_fix.start(d), 0)
         open(os.path.join(d, "a.txt"), "w").write("\n".join(str(i) for i in range(30)) + "\n")
         self.assertEqual(run(), 2)  # 30 lines changed > 20
         open(os.path.join(d, "a.txt"), "w").write("1\n2\n")

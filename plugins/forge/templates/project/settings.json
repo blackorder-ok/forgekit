@@ -21,6 +21,17 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}/scripts/hook_launch.sh\" \"${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}/scripts/fix_prompt.py\""}]}
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "hooks": [
+          {"type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}/scripts/hook_launch.sh\" \"${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}/scripts/fix_warn.py\""}
+        ]
+      }
+    ],
     "Stop": [
       {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT:-$HOME/.kit/repo/plugins/forge}/scripts/hook_launch.sh\" \"$CLAUDE_PROJECT_DIR/scripts/hooks/diff_budget.sh\""}]}
     ]
